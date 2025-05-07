@@ -23,7 +23,7 @@ MEMORY_FILE = "chat_memory.json"
 
 
 # In-memory dictionary to store user and assistant messages
-# I have left this in for Stephen to examine, memory functionality will be removed from Flask app
+# I have left this in for Stephen to examine, memory functionality will be removed from Flask app1
 memory = {}
 
 
