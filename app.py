@@ -23,14 +23,15 @@ MEMORY_FILE = "chat_memory.json"
 
 
 # In-memory dictionary to store user and assistant messages
+# I have left this in for Stephen to examine, memory functionality will be removed from Flask app
 memory = {}
 
 
 #This function accepts a message in the body of a POST request
 #The message is sent to llama locally
 #The message and llama reply are added to memory dictionary
-@app.route("/chat3", methods=["POST"])
-def chat3():
+@app.route("/safe_chat", methods=["POST"])
+def safe_chat():
     user_message = request.json.get("message", "")
     user_id = request.json.get("user_id", "default")  # Optionally use user ID to separate memory for different 
     
