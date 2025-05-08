@@ -69,12 +69,33 @@ def safe_chat():
 def home():
     return render_template('index.html')
 
+
+##Below is filereading code for docx
+
+
+#Extracts text and returns paragraphs seperated by newline
 def extract_text_from_docx(docx_file):
     doc = docx.Document(docx_file)
     text = []
     for paragraph in doc.paragraphs:
         text.append(paragraph.text)
     return "\n".join(text)
+
+
+#same as above function but limits to first 1000words
+def extract_text_from_docx_limited(docx_file, max_words=1000):
+    doc = docx.Document(docx_file)
+    words = []
+
+    for paragraph in doc.paragraphs:
+        paragraph_words = paragraph.text.split()
+        if len(words) + len(paragraph_words) > max_words:
+            remaining = max_words - len(words)
+            words.extend(paragraph_words[:remaining])
+            break
+        words.extend(paragraph_words)
+
+    return ' '.join(words)
 
 @app.route('/fileTest', methods=['GET'])
 def fileTest():
@@ -111,8 +132,6 @@ def fileTest():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
-
-    return jsonify({"content" : text})
 
 if __name__ == '__main__':
     app.run(debug=True)
