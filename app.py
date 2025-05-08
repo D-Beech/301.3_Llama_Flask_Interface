@@ -19,12 +19,31 @@ LLAMA_SERVER_URL = "http://localhost:11434/api/chat"
 
 SYSTEM_PROMPT = """you are johnny, you like pizza. DO NOT TALK ABOUT POEKEMON!"""
 
-MEMORY_FILE = "chat_memory.json"
+
 
 
 # In-memory dictionary to store user and assistant messages
 # I have left this in for Stephen to examine, memory functionality will be removed from Flask app1
 memory = {}
+
+
+def payload():
+    return jsonify({
+    "name": "", #DisplayName from Flutter App
+    "vocab_complexity": None,  #int
+    "tone": "data", #int
+    "token_length": "data", #int
+    "message": "data", 
+    "context": [
+        {"role": "user", "message": "Hello"},
+        {"role": "assistant", "message": "Hi there!"}
+    ]
+    }), 201
+
+@app.route('/hello', methods=['POST', 'GET'])
+def hello():
+    print("chur")
+    return payload()
 
 
 #This function accepts a message in the body of a POST request
@@ -33,24 +52,21 @@ memory = {}
 @app.route("/safe_chat", methods=["POST"])
 def safe_chat():
     user_message = request.json.get("message", "")
-    user_id = request.json.get("user_id", "default")  # Optionally use user ID to separate memory for different 
-    
-    print(memory)
+    context = request.json.get("context", "") #for context(memory) passed in via POST body
 
+    print(context)
+    
+
+    #If message is not in payload error code is returned
     if not user_message:
         return jsonify({"error": "Message is required"}), 400
 
-    # Initialize user memory if it doesn't exist
-    if user_id not in memory:
-        memory[user_id] = []
-
-    # Add the user message to memory
-    memory[user_id].append({"role": "user", "content": user_message})
+    context.append({"role":"user", "content" : user_message})
 
     # Prepare payload with history
     payload = {
         "model": "llama3.2",
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + memory[user_id],
+        "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + context,
         "stream": False
     }
 
@@ -96,4 +112,6 @@ def chat():
 
 
 if __name__ == '__main__':
+    print("hello")
     app.run(debug=True)
+    
