@@ -78,10 +78,7 @@ def safe_chat():
         # Get model's reply
         model_reply = data.get("message", {}).get("content", "No response from model.")
 
-        # Add the assistant's reply to memory
-        memory[user_id].append({"role": "assistant", "content": model_reply})
-
-        return jsonify({"response": model_reply})
+        return jsonify({"response": model_reply}), 200
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
