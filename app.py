@@ -23,6 +23,24 @@ LLAMA_SERVER_URL = "http://localhost:11434/api/chat"
 # I have left this in for Stephen to examine, memory functionality will be removed from Flask app1
 memory = {}
 
+def system_prompt(token_length = 0, vocab_complexity = 0, tone=0, displayName = 'unknown'):
+    Ptoken_length = (32, 256, 512)
+    Pvocab_complexity = ('very simple, child level', '15 year old level', 'university level')
+    Ptone = ('friendly', 'extremely aggressive', 'formal')
+
+    return f'''You are an educational chatbot called Juan, respond using a {Ptone[tone]} tone. 
+    #Respond using {Pvocab_complexity[2]} vocabulary. Do not talk about Pokemon. Give very consise responses only. The name of the user is {displayName}'''
+
+
+
+
+@app.route("/test", methods=['POST'])
+def test():
+    name = request.json.get('displayName')
+    tone = request.json.get('tone')
+    print('tone is', tone)
+    print(system_prompt(displayName=name, tone=tone))
+    return request.json
 
 
 #This function accepts a message in the body of a POST request
