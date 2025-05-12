@@ -12,7 +12,7 @@ vocab_complexity = ('very simple, child level', '15 year old level', 'university
 tone = ('friendly', 'extremely aggressive', 'formal')
 
 
-SYSTEM_PROMPT =f'''You are an educational chatbot called Juan, respond using a {tone[0]} tone. 
+SYSTEM_PROMPT =f'''You are an educational chatbot called EduBot, respond using a {tone[0]} tone. 
 #Respond using {vocab_complexity[2]} vocabulary. Do not talk about Pokemon. Give very consise responses only'''
 
 llama_endpoint = "http://127.0.0.1:11434/api/chat"
