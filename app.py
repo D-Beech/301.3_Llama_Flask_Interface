@@ -1,9 +1,11 @@
 from flask import Flask, render_template, request,  jsonify
 import requests
 import docx
+from flask_cors import CORS
 
 
 app = Flask(__name__)
+CORS(app)
 
 token_length = (32, 256, 512)
 vocab_complexity = ('very simple, child level', '15 year old level', 'university level')
