@@ -13,7 +13,7 @@ tone = ('friendly', 'extremely aggressive', 'formal')
 
 
 SYSTEM_PROMPT =f'''You are an educational chatbot called EduBot, respond using a {tone[0]} tone. 
-#Respond using {vocab_complexity[2]} vocabulary. Do not talk about Pokemon. Give very consise responses only'''
+#Respond using {vocab_complexity[2]} vocabulary. Do not talk about Pokemon. Give very consise responses only.'''
 
 llama_endpoint = "http://127.0.0.1:11434/api/chat"
 
@@ -32,12 +32,12 @@ memory = {}
 #The message and llama reply are added to memory dictionary
 @app.route("/safe_chat", methods=["POST"])
 def safe_chat():
-    user_message = request.json.get("message", "") #This is the user prompt
+    user_message = request.json.get("message", None) #This is the user prompt
     context = request.json.get("context", "") #for context (memory) passed in via POST body
     
     #If message is not in payload error code is returned
-    if not user_message:
-        return jsonify({"error": "Message is required"}), 400
+    # if not user_message:
+    #     return jsonify({"error": "Message is required"}), 400
 
     context.append({"role":"user", "content" : user_message})
 
