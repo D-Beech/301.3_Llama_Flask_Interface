@@ -1,70 +1,127 @@
-from flask import Flask, render_template, request,  jsonify
+from flask import Flask, render_template, request, jsonify, Response
 import requests
+import json
 import docx
 from flask_cors import CORS
-
 
 app = Flask(__name__)
 CORS(app)
 
-token_length = (32, 256, 512)
-vocab_complexity = ('very simple, child level', '15 year old level', 'university level')
-tone = ('friendly', 'extremely aggressive', 'formal')
-
-
-SYSTEM_PROMPT =f'''You are an educational chatbot called EduBot, respond using a {tone[0]} tone. 
-#Respond using {vocab_complexity[2]} vocabulary. Do not talk about Pokemon. Give very consise responses only.'''
-
-llama_endpoint = "http://127.0.0.1:11434/api/chat"
-
+# Settings
 LLAMA_SERVER_URL = "http://localhost:11434/api/chat"
-
-#SYSTEM_PROMPT = """you are johnny, you like pizza. DO NOT TALK ABOUT POEKEMON!"""
-
-# In-memory dictionary to store user and assistant messages
-# I have left this in for Stephen to examine, memory functionality will be removed from Flask app1
-memory = {}
+SYSTEM_PROMPT = (
+    "You are an educational chatbot called Juan, respond using a chill tone. "
+    "Respond using simple vocabulary. Do not talk about Pokemon. Give very concise responses only."
+)
 
 
 
-#This function accepts a message in the body of a POST request
-#The message is sent to llama locally
-#The message and llama reply are added to memory dictionary
-@app.route("/safe_chat", methods=["POST"])
-def safe_chat():
-    user_message = request.json.get("message", None) #This is the user prompt
-    context = request.json.get("context", "") #for context (memory) passed in via POST body
+# System prompt builder
+
+def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_name='unknown'):
+    token_lengths = ['consise', 'medium length', 'thought out, long if needed']
+    vocab_levels = ['very simple, child level', '15 year old level', 'university level']
+    tones = ['friendly', 'extremely aggressive', 'formal']
+
+    return (
+        f"You are an educational chatbot called Juan, respond using a {tones[tone_level]} tone. "
+        f"Respond using {vocab_levels[vocab_level]} vocabulary. Do not talk about Pokemon. "
+        f"Give {token_lengths[token_length]} responses only. The name of the user is {display_name}."
+    )
+
+
+# Stream chat endpoint
+@app.route('/stream_chat', methods=['POST'])
+def stream_chat():
+    user_msg = request.json.get("message", "")
+
+    context = request.json.get("context", [])
+
+    tone = request.json.get("tone", 0)
+    vocab = request.json.get("vocab", 0)
+    name = request.json.get('name', 'unknown')
+    token_len = request.json.get('token_length', 0)
+
+    sys_prompt = build_system_prompt(vocab_level=vocab, tone_level=tone, display_name=name, token_length=token_len)
     
-    #If message is not in payload error code is returned
-    # if not user_message:
-    #     return jsonify({"error": "Message is required"}), 400
 
-    context.append({"role":"user", "content" : user_message})
+    def generate():
+        with requests.post(
+            LLAMA_SERVER_URL,
+            json={
+                "model": "llama3.2",
+                "messages": [{"role" : "system", "content" : sys_prompt}] + context + [{"role": "user", "content": user_msg}],
+                "stream": True
+            },
+            stream=True
+        ) as r:
+            for line in r.iter_lines():
+                if line:
+                    data = json.loads(line)
+                    content = data.get("message", {}).get("content", "")
+                    if content:
+                        yield content
 
-    # Prepare payload with history
+    return Response(generate(), content_type='text/plain')
+
+
+# Basic message endpoint (non-streaming)
+@app.route("/message", methods=['POST'])
+def message():
+    user_message = request.json.get("message")
     payload = {
         "model": "llama3.2",
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + context,
-        "stream": False,
-        "tempurature" : 0.0, #Very stict hallucintaion control
-        "top_p" : 1.0, #Every token is considered, strict hallucintaion control
-        "num_predict" : token_length[0],
-        "stop" : ["</s>"] #This is Meta's recommendation to stop hallucinated user messages
+        "messages": [{"role": "user", "content": user_message}],
+        "stream": False
     }
 
     try:
         response = requests.post(LLAMA_SERVER_URL, json=payload)
         response.raise_for_status()
         data = response.json()
-
-        # Get model's reply
-        model_reply = data.get("message", {}).get("content", "No response from model.")
-
-        return jsonify({"response": model_reply}), 200
-
+        reply = data.get("message", {}).get("content", "No response from model.")
+        return jsonify({"message": reply}), 200
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
+
+# Debugging/test endpoint
+@app.route("/test", methods=['POST'])
+def test():
+    name = request.json.get('displayName')
+    tone = request.json.get('tone')
+    prompt = build_system_prompt(display_name=name, tone_level=int(tone))
+    return jsonify({"system_prompt": prompt})
+
+
+# Safe chat with optional context
+@app.route("/safe_chat", methods=["POST"])
+def safe_chat():
+    user_message = request.json.get("message", "")
+    context = request.json.get("context", [])
+
+    if not user_message:
+        return jsonify({"error": "Message is required"}), 400
+
+    context.append({"role": "user", "content": user_message})
+    payload = {
+        "model": "llama3.2",
+        "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + context,
+        "stream": False,
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "num_predict": token_lengths[0],
+        "stop": ["</s>"]
+    }
+
+    try:
+        response = requests.post(LLAMA_SERVER_URL, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        reply = data.get("message", {}).get("content", "No response from model.")
+        return jsonify({"response": reply}), 200
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/')
@@ -72,69 +129,49 @@ def home():
     return render_template('index.html')
 
 
-##Below is filereading code for docx
+# Extract text from docx file
 
-
-#Extracts text and returns paragraphs seperated by newline
 def extract_text_from_docx(docx_file):
     doc = docx.Document(docx_file)
-    text = []
-    for paragraph in doc.paragraphs:
-        text.append(paragraph.text)
-    return "\n".join(text)
+    return "\n".join(paragraph.text for paragraph in doc.paragraphs)
 
 
-#same as above function but limits to first 1000words
 def extract_text_from_docx_limited(docx_file, max_words=1000):
     doc = docx.Document(docx_file)
     words = []
-
     for paragraph in doc.paragraphs:
-        paragraph_words = paragraph.text.split()
-        if len(words) + len(paragraph_words) > max_words:
-            remaining = max_words - len(words)
-            words.extend(paragraph_words[:remaining])
+        p_words = paragraph.text.split()
+        if len(words) + len(p_words) > max_words:
+            words.extend(p_words[:max_words - len(words)])
             break
-        words.extend(paragraph_words)
-
+        words.extend(p_words)
     return ' '.join(words)
 
+
 @app.route('/fileTest', methods=['GET'])
-def fileTest():
-
-    message = "please summarize the following: "
-
+def file_test():
     with open('CS301.2_IDD_Datu_Beech_Submission.docx', 'rb') as file:
-        text = extract_text_from_docx(file)  # Adjust 40 if needed
-        message += text
+        text = extract_text_from_docx(file)
+    message = f"please summarize the following: {text}"
 
-    print(message)
-    
-     # Prepare payload with history
     payload = {
         "model": "llama3.2",
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + [{"role":"user", "content" : message}],
+        "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": message}],
         "stream": False,
-        "temperature" : 0.0, #Very stict hallucintaion control
-        "top_p" : 1.0, #Every token is considered, strict hallucintaion control
-        "num_predict" : token_length[0],
-        "stop" : ["</s>"] #This is Meta's recommendation to stop hallucinated user messages
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "stop": ["</s>"]
     }
 
     try:
         response = requests.post(LLAMA_SERVER_URL, json=payload)
         response.raise_for_status()
         data = response.json()
-
-        # Get model's reply
-        model_reply = data.get("message", {}).get("content", "No response from model.")
-
-        return jsonify({"response": model_reply}), 200
-
+        reply = data.get("message", {}).get("content", "No response from model.")
+        return jsonify({"response": reply}), 200
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
+    app.run(port=5001, debug=True)
