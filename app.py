@@ -1,8 +1,33 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, redirect, render_template_string
 import requests
 import json
-import docx
+import docx_summary
 from flask_cors import CORS
+
+import boto3
+import os
+from dotenv import load_dotenv
+
+
+#These are simpler than serilizaers i reckon
+from dataclasses import dataclass, field
+from typing import List
+
+@dataclass
+class ContextItem:
+    role: str  # "user" or "assistant"
+    content: str
+
+@dataclass
+class ChatPayload:
+    message: str = ''
+    context: List[ContextItem] = field(default_factory=list)
+    displayName: str = "unknown"
+    token_length: int = 0
+    vocab_complexity: int = 0
+    tone: int = 0
+
+
 
 app = Flask(__name__)
 CORS(app)
@@ -31,26 +56,36 @@ def build_system_prompt(token_length=0, vocab_level=2, tone_level=0, display_nam
 
 
 # Stream chat endpoint
+
 @app.route('/stream_chat', methods=['POST'])
 def stream_chat():
-    user_msg = request.json.get("message", "")
+    data = request.get_json()
+    payload = ChatPayload(
+        message=data.get("message", ""),
+        context=data.get("context", []),
+        displayName=data.get("displayName", "unknown"),
+        tone=data.get("tone", 0),
+        vocab_complexity=data.get("vocab_complexity", 0),
+        token_length=data.get("token_length", 0)
+    )
 
-    context = request.json.get("context", [])
+    sys_prompt = build_system_prompt(
+        vocab_level=payload.vocab_complexity,
+        tone_level=payload.tone,
+        display_name=payload.displayName,
+        token_length=payload.token_length
+    )
 
-    tone = request.json.get("tone", 0)
-    vocab = request.json.get("vocab", 0)
-    name = request.json.get('name', 'unknown')
-    token_len = request.json.get('token_length', 0)
-
-    sys_prompt = build_system_prompt(vocab_level=vocab, tone_level=tone, display_name=name, token_length=token_len)
-    
+    print(payload.message, 'look here')
 
     def generate():
         with requests.post(
             LLAMA_SERVER_URL,
             json={
                 "model": "llama3.2",
-                "messages": [{"role" : "system", "content" : sys_prompt}] + context + [{"role": "user", "content": user_msg}],
+                "messages": [{"role": "system", "content": sys_prompt}] +
+                            payload.context +
+                            [{"role": "user", "content": payload.message}],
                 "stream": True
             },
             stream=True
@@ -65,45 +100,25 @@ def stream_chat():
     return Response(generate(), content_type='text/plain')
 
 
-# Basic message endpoint (non-streaming)
-@app.route("/message", methods=['POST'])
-def message():
-    user_message = request.json.get("message")
-    payload = {
-        "model": "llama3.2",
-        "messages": [{"role": "user", "content": user_message}],
-        "stream": False
-    }
-
-    try:
-        response = requests.post(LLAMA_SERVER_URL, json=payload)
-        response.raise_for_status()
-        data = response.json()
-        reply = data.get("message", {}).get("content", "No response from model.")
-        return jsonify({"message": reply}), 200
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# Debugging/test endpoint
-@app.route("/test", methods=['POST'])
-def test():
-    name = request.json.get('displayName')
-    tone = request.json.get('tone')
-    prompt = build_system_prompt(display_name=name, tone_level=int(tone))
-    return jsonify({"system_prompt": prompt})
-
-
 # Safe chat with optional context
 @app.route("/safe_chat", methods=["POST"])
 def safe_chat():
-    user_message = request.json.get("message", "")
-    context = request.json.get("context", [])
+    # Deserialize the JSON request into a ChatRequest object
+    try:
+        data = request.get_json()
+        chat_req = ChatPayload(**data)
+    except Exception as e:
+        return jsonify({"error": f"Invalid data: {str(e)}"}), 400
 
     # if not user_message:
     #     return jsonify({"error": "Message is required"}), 400
 
+    # Check if the user message is provided
+
+    # Append the user message to context
     context.append({"role": "user", "content": user_message})
+
+    # Build the payload to send to Llama API
     payload = {
         "model": "llama3.2",
         "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + context,
@@ -115,11 +130,15 @@ def safe_chat():
     }
 
     try:
+        # Send the request to Llama API
         response = requests.post(LLAMA_SERVER_URL, json=payload)
         response.raise_for_status()
         data = response.json()
-        reply = data.get("message", {}).get("content", "No response from model.")
-        return jsonify({"response": reply}), 200
+
+        # Get model's reply
+        model_reply = data.get("message", {}).get("content", "No response from model.")
+        return jsonify({"response": model_reply}), 200
+
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
@@ -128,24 +147,6 @@ def safe_chat():
 def home():
     return render_template('index.html')
 
-
-# Extract text from docx file
-
-def extract_text_from_docx(docx_file):
-    doc = docx.Document(docx_file)
-    return "\n".join(paragraph.text for paragraph in doc.paragraphs)
-
-
-def extract_text_from_docx_limited(docx_file, max_words=1000):
-    doc = docx.Document(docx_file)
-    words = []
-    for paragraph in doc.paragraphs:
-        p_words = paragraph.text.split()
-        if len(words) + len(p_words) > max_words:
-            words.extend(p_words[:max_words - len(words)])
-            break
-        words.extend(p_words)
-    return ' '.join(words)
 
 
 @app.route('/fileTest', methods=['GET'])
