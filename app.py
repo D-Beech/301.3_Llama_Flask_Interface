@@ -18,7 +18,7 @@ SYSTEM_PROMPT = (
 
 # System prompt builder
 
-def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_name='unknown'):
+def build_system_prompt(token_length=0, vocab_level=2, tone_level=0, display_name='unknown'):
     token_lengths = ['consise', 'medium length', 'thought out, long if needed']
     vocab_levels = ['very simple, child level', '15 year old level', 'university level']
     tones = ['friendly', 'extremely aggressive', 'formal']
