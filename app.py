@@ -1,9 +1,13 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, redirect, render_template_string
 import requests
 import json
-import docx
 import docx_summary
 from flask_cors import CORS
+
+import boto3
+import os
+from dotenv import load_dotenv
+
 
 #These are simpler than serilizaers i reckon
 from dataclasses import dataclass, field
