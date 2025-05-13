@@ -110,8 +110,9 @@ def safe_chat():
     except Exception as e:
         return jsonify({"error": f"Invalid data: {str(e)}"}), 400
 
-    # if not user_message:
-    #     return jsonify({"error": "Message is required"}), 400
+    # Get the user message and context from the dataclass
+    user_message = chat_req.message
+    context = chat_req.context
 
     # Check if the user message is provided
 
@@ -125,7 +126,6 @@ def safe_chat():
         "stream": False,
         "temperature": 0.0,
         "top_p": 1.0,
-        "num_predict": 300, # Temporary value because token lengths is inaccessible currently
         "stop": ["</s>"]
     }
 
