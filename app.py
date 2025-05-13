@@ -15,7 +15,7 @@ class ContextItem:
 
 @dataclass
 class ChatPayload:
-    message: str = None
+    message: str = ''
     context: List[ContextItem] = field(default_factory=list)
     displayName: str = "unknown"
     token_length: int = 0
@@ -70,6 +70,8 @@ def stream_chat():
         display_name=payload.displayName,
         token_length=payload.token_length
     )
+
+    print(payload.message, 'look here')
 
     def generate():
         with requests.post(
