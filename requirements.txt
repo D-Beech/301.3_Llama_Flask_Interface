@@ -5,6 +5,7 @@ charset-normalizer==3.4.2
 click==8.1.8
 colorama==0.4.6
 cors==1.0.1
+docx==0.2.4
 filelock==3.18.0
 Flask==3.1.0
 flask-cors==5.0.1
@@ -16,6 +17,7 @@ itsdangerous==2.2.0
 Jinja2==3.1.6
 lxml==5.4.0
 MarkupSafe==3.0.2
+pillow==11.2.1
 pycparser==2.22
 PySocks==1.7.1
 python-docx==1.1.2
