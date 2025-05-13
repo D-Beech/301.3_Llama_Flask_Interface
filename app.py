@@ -95,42 +95,6 @@ def stream_chat():
     return Response(generate(), content_type='text/plain')
 
 
-# @app.route('/stream_chat', methods=['POST'])
-# def stream_chat():
-#     user_msg = request.json.get("message", "")
-
-#     context = request.json.get("context", [])
-
-#     tone = request.json.get("tone", 0)
-#     vocab = request.json.get("vocab", 0)
-#     name = request.json.get('name', 'unknown')
-#     token_len = request.json.get('token_length', 0)
-
-#     sys_prompt = build_system_prompt(vocab_level=vocab, tone_level=tone, display_name=name, token_length=token_len)
-    
-
-#     def generate():
-#         with requests.post(
-#             LLAMA_SERVER_URL,
-#             json={
-#                 "model": "llama3.2",
-#                 "messages": [{"role" : "system", "content" : sys_prompt}] + context + [{"role": "user", "content": user_msg}],
-#                 "stream": True
-#             },
-#             stream=True
-#         ) as r:
-#             for line in r.iter_lines():
-#                 if line:
-#                     data = json.loads(line)
-#                     content = data.get("message", {}).get("content", "")
-#                     if content:
-#                         yield content
-
-#     return Response(generate(), content_type='text/plain')
-
-
-
-
 # Safe chat with optional context
 @app.route("/safe_chat", methods=["POST"])
 def safe_chat():
@@ -172,36 +136,6 @@ def safe_chat():
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
-
-
-
-# @app.route("/safe_chat", methods=["POST"])
-# def safe_chat():
-#     user_message = request.json.get("message", "")
-#     context = request.json.get("context", [])
-
-#     if not user_message:
-#         return jsonify({"error": "Message is required"}), 400
-
-#     context.append({"role": "user", "content": user_message})
-#     payload = {
-#         "model": "llama3.2",
-#         "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + context,
-#         "stream": False,
-#         "temperature": 0.0,
-#         "top_p": 1.0,
-#         "num_predict": token_lengths[0],
-#         "stop": ["</s>"]
-#     }
-
-#     try:
-#         response = requests.post(LLAMA_SERVER_URL, json=payload)
-#         response.raise_for_status()
-#         data = response.json()
-#         reply = data.get("message", {}).get("content", "No response from model.")
-#         return jsonify({"response": reply}), 200
-#     except requests.exceptions.RequestException as e:
-#         return jsonify({"error": str(e)}), 500
 
 
 @app.route('/')
