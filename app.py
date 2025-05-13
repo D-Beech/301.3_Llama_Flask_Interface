@@ -13,18 +13,20 @@ SYSTEM_PROMPT = (
     "You are an educational chatbot called Juan, respond using a chill tone. "
     "Respond using simple vocabulary. Do not talk about Pokemon. Give very concise responses only."
 )
-token_lengths = [32, 256, 512]
-vocab_levels = ['very simple, child level', '15 year old level', 'university level']
-tones = ['friendly', 'extremely aggressive', 'formal']
+
 
 
 # System prompt builder
 
-def build_system_prompt(token_level=0, vocab_level=0, tone_level=0, display_name='unknown'):
+def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_name='unknown'):
+    token_lengths = ['consise', 'medium length', 'thought out, long if needed']
+    vocab_levels = ['very simple, child level', '15 year old level', 'university level']
+    tones = ['friendly', 'extremely aggressive', 'formal']
+
     return (
         f"You are an educational chatbot called Juan, respond using a {tones[tone_level]} tone. "
         f"Respond using {vocab_levels[vocab_level]} vocabulary. Do not talk about Pokemon. "
-        f"Give very concise responses only. The name of the user is {display_name}."
+        f"Give {token_lengths[token_length]} responses only. The name of the user is {display_name}."
     )
 
 
@@ -33,12 +35,22 @@ def build_system_prompt(token_level=0, vocab_level=0, tone_level=0, display_name
 def stream_chat():
     user_msg = request.json.get("message", "")
 
+    context = request.json.get("context", [])
+
+    tone = request.json.get("tone", 0)
+    vocab = request.json.get("vocab", 0)
+    name = request.json.get('name', 'unknown')
+    token_len = request.json.get('token_length', 0)
+
+    sys_prompt = build_system_prompt(vocab_level=vocab, tone_level=tone, display_name=name, token_length=token_len)
+    
+
     def generate():
         with requests.post(
             LLAMA_SERVER_URL,
             json={
                 "model": "llama3.2",
-                "messages": [{"role": "user", "content": user_msg}],
+                "messages": [{"role" : "system", "content" : sys_prompt}] + context + [{"role": "user", "content": user_msg}],
                 "stream": True
             },
             stream=True
@@ -148,7 +160,6 @@ def file_test():
         "stream": False,
         "temperature": 0.0,
         "top_p": 1.0,
-        "num_predict": token_lengths[0],
         "stop": ["</s>"]
     }
 
