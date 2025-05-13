@@ -100,8 +100,8 @@ def safe_chat():
     user_message = request.json.get("message", "")
     context = request.json.get("context", [])
 
-    if not user_message:
-        return jsonify({"error": "Message is required"}), 400
+    # if not user_message:
+    #     return jsonify({"error": "Message is required"}), 400
 
     context.append({"role": "user", "content": user_message})
     payload = {
@@ -110,7 +110,7 @@ def safe_chat():
         "stream": False,
         "temperature": 0.0,
         "top_p": 1.0,
-        "num_predict": token_lengths[0],
+        "num_predict": 300, # Temporary value because token lengths is inaccessible currently
         "stop": ["</s>"]
     }
 
