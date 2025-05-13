@@ -4,6 +4,26 @@ import json
 import docx
 from flask_cors import CORS
 
+#These are simpler than serilizaers i reckon
+from dataclasses import dataclass, field
+from typing import List
+
+@dataclass
+class ContextItem:
+    role: str  # "user" or "assistant"
+    content: str
+
+@dataclass
+class ChatPayload:
+    message: str
+    context: List[ContextItem] = field(default_factory=list)
+    displayName: str = "unknown"
+    token_length: int = 0
+    vocab_complexity: int = 0
+    tone: int = 0
+
+
+
 app = Flask(__name__)
 CORS(app)
 
@@ -31,26 +51,34 @@ def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_nam
 
 
 # Stream chat endpoint
+
 @app.route('/stream_chat', methods=['POST'])
 def stream_chat():
-    user_msg = request.json.get("message", "")
+    data = request.get_json()
+    payload = ChatPayload(
+        message=data.get("message", ""),
+        context=data.get("context", []),
+        displayName=data.get("displayName", "unknown"),
+        tone=data.get("tone", 0),
+        vocab_complexity=data.get("vocab_complexity", 0),
+        token_length=data.get("token_length", 0)
+    )
 
-    context = request.json.get("context", [])
-
-    tone = request.json.get("tone", 0)
-    vocab = request.json.get("vocab", 0)
-    name = request.json.get('name', 'unknown')
-    token_len = request.json.get('token_length', 0)
-
-    sys_prompt = build_system_prompt(vocab_level=vocab, tone_level=tone, display_name=name, token_length=token_len)
-    
+    sys_prompt = build_system_prompt(
+        vocab_level=payload.vocab_complexity,
+        tone_level=payload.tone,
+        display_name=payload.displayName,
+        token_length=payload.token_length
+    )
 
     def generate():
         with requests.post(
             LLAMA_SERVER_URL,
             json={
                 "model": "llama3.2",
-                "messages": [{"role" : "system", "content" : sys_prompt}] + context + [{"role": "user", "content": user_msg}],
+                "messages": [{"role": "system", "content": sys_prompt}] +
+                            payload.context +
+                            [{"role": "user", "content": payload.message}],
                 "stream": True
             },
             stream=True
@@ -63,6 +91,40 @@ def stream_chat():
                         yield content
 
     return Response(generate(), content_type='text/plain')
+
+
+# @app.route('/stream_chat', methods=['POST'])
+# def stream_chat():
+#     user_msg = request.json.get("message", "")
+
+#     context = request.json.get("context", [])
+
+#     tone = request.json.get("tone", 0)
+#     vocab = request.json.get("vocab", 0)
+#     name = request.json.get('name', 'unknown')
+#     token_len = request.json.get('token_length', 0)
+
+#     sys_prompt = build_system_prompt(vocab_level=vocab, tone_level=tone, display_name=name, token_length=token_len)
+    
+
+#     def generate():
+#         with requests.post(
+#             LLAMA_SERVER_URL,
+#             json={
+#                 "model": "llama3.2",
+#                 "messages": [{"role" : "system", "content" : sys_prompt}] + context + [{"role": "user", "content": user_msg}],
+#                 "stream": True
+#             },
+#             stream=True
+#         ) as r:
+#             for line in r.iter_lines():
+#                 if line:
+#                     data = json.loads(line)
+#                     content = data.get("message", {}).get("content", "")
+#                     if content:
+#                         yield content
+
+#     return Response(generate(), content_type='text/plain')
 
 
 # Basic message endpoint (non-streaming)
@@ -97,31 +159,76 @@ def test():
 # Safe chat with optional context
 @app.route("/safe_chat", methods=["POST"])
 def safe_chat():
-    user_message = request.json.get("message", "")
-    context = request.json.get("context", [])
+    # Deserialize the JSON request into a ChatRequest object
+    try:
+        data = request.get_json()
+        chat_req = ChatPayload(**data)
+    except Exception as e:
+        return jsonify({"error": f"Invalid data: {str(e)}"}), 400
 
+    # Get the user message and context from the dataclass
+    user_message = chat_req.message
+    context = chat_req.context
+
+    # Check if the user message is provided
     if not user_message:
         return jsonify({"error": "Message is required"}), 400
 
+    # Append the user message to context
     context.append({"role": "user", "content": user_message})
+
+    # Build the payload to send to Llama API
     payload = {
         "model": "llama3.2",
         "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + context,
         "stream": False,
         "temperature": 0.0,
         "top_p": 1.0,
-        "num_predict": token_lengths[0],
         "stop": ["</s>"]
     }
 
     try:
+        # Send the request to Llama API
         response = requests.post(LLAMA_SERVER_URL, json=payload)
         response.raise_for_status()
         data = response.json()
-        reply = data.get("message", {}).get("content", "No response from model.")
-        return jsonify({"response": reply}), 200
+
+        # Get model's reply
+        model_reply = data.get("message", {}).get("content", "No response from model.")
+        return jsonify({"response": model_reply}), 200
+
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+# @app.route("/safe_chat", methods=["POST"])
+# def safe_chat():
+#     user_message = request.json.get("message", "")
+#     context = request.json.get("context", [])
+
+#     if not user_message:
+#         return jsonify({"error": "Message is required"}), 400
+
+#     context.append({"role": "user", "content": user_message})
+#     payload = {
+#         "model": "llama3.2",
+#         "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + context,
+#         "stream": False,
+#         "temperature": 0.0,
+#         "top_p": 1.0,
+#         "num_predict": token_lengths[0],
+#         "stop": ["</s>"]
+#     }
+
+#     try:
+#         response = requests.post(LLAMA_SERVER_URL, json=payload)
+#         response.raise_for_status()
+#         data = response.json()
+#         reply = data.get("message", {}).get("content", "No response from model.")
+#         return jsonify({"response": reply}), 200
+#     except requests.exceptions.RequestException as e:
+#         return jsonify({"error": str(e)}), 500
 
 
 @app.route('/')
