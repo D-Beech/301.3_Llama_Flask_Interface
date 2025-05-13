@@ -15,7 +15,7 @@ class ContextItem:
 
 @dataclass
 class ChatPayload:
-    message: str
+    message: str = None
     context: List[ContextItem] = field(default_factory=list)
     displayName: str = "unknown"
     token_length: int = 0
@@ -127,33 +127,6 @@ def stream_chat():
 #     return Response(generate(), content_type='text/plain')
 
 
-# Basic message endpoint (non-streaming)
-@app.route("/message", methods=['POST'])
-def message():
-    user_message = request.json.get("message")
-    payload = {
-        "model": "llama3.2",
-        "messages": [{"role": "user", "content": user_message}],
-        "stream": False
-    }
-
-    try:
-        response = requests.post(LLAMA_SERVER_URL, json=payload)
-        response.raise_for_status()
-        data = response.json()
-        reply = data.get("message", {}).get("content", "No response from model.")
-        return jsonify({"message": reply}), 200
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# Debugging/test endpoint
-@app.route("/test", methods=['POST'])
-def test():
-    name = request.json.get('displayName')
-    tone = request.json.get('tone')
-    prompt = build_system_prompt(display_name=name, tone_level=int(tone))
-    return jsonify({"system_prompt": prompt})
 
 
 # Safe chat with optional context
@@ -171,8 +144,6 @@ def safe_chat():
     context = chat_req.context
 
     # Check if the user message is provided
-    if not user_message:
-        return jsonify({"error": "Message is required"}), 400
 
     # Append the user message to context
     context.append({"role": "user", "content": user_message})
