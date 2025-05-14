@@ -61,6 +61,13 @@ SYSTEM_PROMPT = (
 )
 
 
+#The below functions get the document from S3 based on file_key (passed in body)
+#Extract the text
+#Ask Llama to summarize
+#Return Response
+
+#The next steps are implementing queueing and i think flutter should generate unique strings for key not use file name
+
 def extract_text_from_docx(docx_file):
     doc = docx.Document(docx_file)
     return "\n".join(paragraph.text for paragraph in doc.paragraphs)
