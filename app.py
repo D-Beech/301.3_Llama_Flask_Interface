@@ -98,7 +98,7 @@ def stream_chat():
                         # Format as Server-Sent Event
                         yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
 
-    return Response(generate(), content_type='text/plain')
+    return Response(generate(), content_type='text/event-stream')
 
 
 # Safe chat with optional context
