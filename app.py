@@ -1,17 +1,17 @@
-from flask import Flask, render_template, request, jsonify, Response, redirect, render_template_string
+from flask import Flask, render_template, request, jsonify, Response
 import requests
 import json
 import docx_summary
 from flask_cors import CORS
 
-import boto3
-import os
-from dotenv import load_dotenv
-
-
 #These are simpler than serilizaers i reckon
 from dataclasses import dataclass, field
 from typing import List
+
+import boto3
+from dotenv import load_dotenv
+from botocore.exceptions import NoCredentialsError
+import os
 
 @dataclass
 class ContextItem:
@@ -27,10 +27,28 @@ class ChatPayload:
     vocab_complexity: int = 0
     tone: int = 0
 
-
-
 app = Flask(__name__)
 CORS(app)
+
+load_dotenv()
+
+# AWS config from .env
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.getenv("AWS_REGION")
+AWS_S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
+
+
+# Create boto3 client
+s3_client = boto3.client(
+    "s3",
+    region_name=AWS_REGION,
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+)
+
+# Create a session using boto3
+s3_client = boto3.client('s3', region_name=AWS_REGION)
 
 # Settings
 LLAMA_SERVER_URL = "http://localhost:11434/api/chat"
@@ -39,10 +57,36 @@ SYSTEM_PROMPT = (
     "Respond using simple vocabulary. Do not talk about Pokemon. Give very concise responses only."
 )
 
+#This route generates presigned url for uploading documents to s3
+#Currently any file type is accepted, flutter app needs to only allowe doc, docx, pdf, txt
+@app.route('/generate-upload-url', methods=['POST'])
+def generate_upload_url():
+    data = request.get_json()
+    filename = data.get('filename')
+    content_type = data.get('content_type')
+
+    if not filename or not content_type:
+        return jsonify({'error': 'filename and content_type are required'}), 400
+
+    try:
+        signed_url = s3_client.generate_presigned_url(
+            ClientMethod='put_object',
+            Params={
+                'Bucket': AWS_S3_BUCKET_NAME,
+                'Key': filename,
+                'ContentType': content_type
+            },
+            ExpiresIn=3600,
+        )
+        print(signed_url)
+        return jsonify({'upload_url': signed_url})
+    except NoCredentialsError:
+        return jsonify({'error': 'Invalid AWS credentials'}), 403
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # System prompt builder
-
 def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_name='unknown'):
     token_lengths = ['consise', 'medium length', 'thought out, long if needed']
     vocab_levels = ['very simple, child level', '15 year old level', 'university level']
@@ -56,7 +100,7 @@ def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_nam
 
 
 # Stream chat endpoint
-
+# This post api has streaming enabled, streaming will also need to be enabled in Flutter
 @app.route('/stream_chat', methods=['POST'])
 def stream_chat():
     data = request.get_json()
@@ -100,7 +144,11 @@ def stream_chat():
     return Response(generate(), content_type='text/plain')
 
 
-# Safe chat with optional context
+
+
+# This is the regular POST chat endpoint
+# Sends a single message, no streaming. Easier to use.
+
 @app.route("/safe_chat", methods=["POST"])
 def safe_chat():
     # Deserialize the JSON request into a ChatRequest object
@@ -147,31 +195,29 @@ def safe_chat():
 def home():
     return render_template('index.html')
 
+# @app.route('/fileTest', methods=['GET'])
+# def file_test():
+#     with open('CS301.2_IDD_Datu_Beech_Submission.docx', 'rb') as file:
+#         text = extract_text_from_docx(file)
+#     message = f"please summarize the following: {text}"
 
+#     payload = {
+#         "model": "llama3.2",
+#         "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": message}],
+#         "stream": False,
+#         "temperature": 0.0,
+#         "top_p": 1.0,
+#         "stop": ["</s>"]
+#     }
 
-@app.route('/fileTest', methods=['GET'])
-def file_test():
-    with open('CS301.2_IDD_Datu_Beech_Submission.docx', 'rb') as file:
-        text = extract_text_from_docx(file)
-    message = f"please summarize the following: {text}"
-
-    payload = {
-        "model": "llama3.2",
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": message}],
-        "stream": False,
-        "temperature": 0.0,
-        "top_p": 1.0,
-        "stop": ["</s>"]
-    }
-
-    try:
-        response = requests.post(LLAMA_SERVER_URL, json=payload)
-        response.raise_for_status()
-        data = response.json()
-        reply = data.get("message", {}).get("content", "No response from model.")
-        return jsonify({"response": reply}), 200
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+#     try:
+#         response = requests.post(LLAMA_SERVER_URL, json=payload)
+#         response.raise_for_status()
+#         data = response.json()
+#         reply = data.get("message", {}).get("content", "No response from model.")
+#         return jsonify({"response": reply}), 200
+#     except requests.exceptions.RequestException as e:
+#         return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
