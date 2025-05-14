@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, jsonify, Response
 import requests
 import json
-import docx_summary
+#import docx_summary
+import docx
 from flask_cors import CORS
 
 #These are simpler than serilizaers i reckon
@@ -12,6 +13,8 @@ import boto3
 from dotenv import load_dotenv
 from botocore.exceptions import NoCredentialsError
 import os
+
+import tempfile
 
 @dataclass
 class ContextItem:
@@ -56,6 +59,91 @@ SYSTEM_PROMPT = (
     "You are an educational chatbot called Juan, respond using a chill tone. "
     "Respond using simple vocabulary. Do not talk about Pokemon. Give very concise responses only."
 )
+
+
+def extract_text_from_docx(docx_file):
+    doc = docx.Document(docx_file)
+    return "\n".join(paragraph.text for paragraph in doc.paragraphs)
+
+def extract_text_from_s3(bucket_name, file_key):
+    try:
+        # Download file from S3
+        file_obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+        file_content = file_obj['Body'].read()
+        
+        # Save file to a temporary location to read the text
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
+            temp_file.write(file_content)
+            temp_file_path = temp_file.name
+        return extract_text_from_docx(temp_file_path)
+    
+    except NoCredentialsError:
+        raise Exception("AWS credentials are invalid or not configured.")
+    except Exception as e:
+        raise Exception(f"Failed to download or read the file from S3: {str(e)}")
+
+def summarize_text_with_llama(text):
+    payload = {
+        "model": "llama3.2",
+        "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Please summarize the following: {text}"}],
+        "stream": False,
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "stop": ["</s>"]
+    }
+
+    try:
+        response = requests.post(LLAMA_SERVER_URL, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("message", {}).get("content", "No summary response.")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Failed to get a response from Llama API: {str(e)}")
+
+@app.route('/process-docx', methods=['POST'])
+def process_docx():
+    # Get the filename from the request
+    data = request.get_json()
+    file_key = data.get('file_key')
+
+    if not file_key:
+        return jsonify({"error": "File key is required"}), 400
+    
+    try:
+        # Extract text from DOCX file stored in S3
+        extracted_text = extract_text_from_s3(AWS_S3_BUCKET_NAME, file_key)
+        
+        # Summarize the text with Llama
+        summary = summarize_text_with_llama(extracted_text)
+        
+        return jsonify({"summary": summary}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #This route generates presigned url for uploading documents to s3
 #Currently any file type is accepted, flutter app needs to only allowe doc, docx, pdf, txt
