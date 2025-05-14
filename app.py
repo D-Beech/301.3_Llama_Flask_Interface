@@ -49,7 +49,7 @@ def build_system_prompt(token_length=0, vocab_level=2, tone_level=0, display_nam
     tones = ['friendly', 'extremely aggressive', 'formal']
 
     return (
-        f"You are an educational chatbot called Juan, respond using a {tones[tone_level]} tone. "
+        f"You are an educational chatbot called EduBot, respond using a {tones[tone_level]} tone. "
         f"Respond using {vocab_levels[vocab_level]} vocabulary. Do not talk about Pokemon. "
         f"Give {token_lengths[token_length]} responses only. The name of the user is {display_name}."
     )
