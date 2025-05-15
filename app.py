@@ -234,9 +234,10 @@ def stream_chat():
                     data = json.loads(line)
                     content = data.get("message", {}).get("content", "")
                     if content:
-                        yield content
+                        # Format as Server-Sent Event
+                        yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
 
-    return Response(generate(), content_type='text/plain')
+    return Response(generate(), content_type='text/event-stream')
 
 
 
