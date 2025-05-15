@@ -9,12 +9,18 @@ from flask_cors import CORS
 from dataclasses import dataclass, field
 from typing import List
 
+#AWS SW things for Presigned URL generation and File read
 import boto3
 from dotenv import load_dotenv
 from botocore.exceptions import NoCredentialsError
 import os
 
 import tempfile
+
+
+
+
+
 
 @dataclass
 class ContextItem:
@@ -127,26 +133,6 @@ def process_docx():
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -285,6 +271,41 @@ def safe_chat():
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
+    
+
+#Generate Title API, in progress    
+@app.route('/make_title', methods=['POST'])
+def make_title():
+    context = request.json.get("context",[])
+
+    print(context)
+
+    title_sys_prompt = """You are to return a single concise title summarizing the conversation. Keep it consise, if nothing here just say edubot chat or something"""
+    
+    # Build the payload to send to Llama API
+    payload = {
+        "model": "llama3.2",
+        "messages": context +  [{"role": "user", "content": title_sys_prompt}], #I tried using System role message, but user message sent last works most reliably to generate title
+        "stream": False,
+    }
+
+    try:
+        # Send the request to Llama API
+        response = requests.post(LLAMA_SERVER_URL, json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+        print(data)
+
+        # Get model's reply
+        model_reply = data.get("message", {}).get("content", "No response from model.")
+        return jsonify({"title": model_reply}), 200
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+    return
+
 
 
 @app.route('/')
