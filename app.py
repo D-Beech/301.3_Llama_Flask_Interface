@@ -278,9 +278,10 @@ def safe_chat():
 def make_title():
     context = request.json.get("context",[])
 
+
     print(context)
 
-    title_sys_prompt = """You are to return a single concise title summarizing the conversation. Keep it consise, if nothing here just say edubot chat or something"""
+    title_sys_prompt = """You are to return a single concise title summarizing the conversation. This title cannot be longer than 4 words. Keep it consise, if nothing here just say edubot chat or something. No quotes at start or end"""
     
     # Build the payload to send to Llama API
     payload = {
