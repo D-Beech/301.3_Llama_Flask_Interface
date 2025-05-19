@@ -86,9 +86,6 @@ def extract_text_from_s3(bucket_name, file_key):
         # Download file from S3
         file_obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
         file_content = file_obj['Body'].read()
-
-        # Determine file extension
-        extension = os.path.splitext(file_key)[1].lower()  # e.g., '.pdf', '.docx'
         
         # Save file to a temporary location to read the text
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx', mode='wb') as temp_file:
