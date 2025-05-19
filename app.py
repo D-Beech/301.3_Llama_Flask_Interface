@@ -1,8 +1,11 @@
 from flask import Flask, render_template, request, jsonify, Response
 import requests
 import json
+
 #import docx_summary
 import docx
+from docx.opc.exceptions import PackageNotFoundError
+
 from flask_cors import CORS
 
 #These are simpler than serilizaers i reckon
@@ -83,11 +86,18 @@ def extract_text_from_s3(bucket_name, file_key):
         # Download file from S3
         file_obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
         file_content = file_obj['Body'].read()
+
+        # Determine file extension
+        extension = os.path.splitext(file_key)[1].lower()  # e.g., '.pdf', '.docx'
         
         # Save file to a temporary location to read the text
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx', mode='wb') as temp_file:
             temp_file.write(file_content)
             temp_file_path = temp_file.name
+        print(f"Temp file created at: {temp_file_path}")
+        print(f"File exists: {os.path.exists(temp_file_path)}")
+        print(f"File size: {os.path.getsize(temp_file_path)} bytes")
+        
         return extract_text_from_docx(temp_file_path)
     
     except NoCredentialsError:
