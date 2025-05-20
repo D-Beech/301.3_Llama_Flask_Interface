@@ -6,6 +6,11 @@ import json
 import docx
 from docx.opc.exceptions import PackageNotFoundError
 
+# pdf summary support
+from PyPDF2 import PdfReader
+
+import win32com.client
+
 from flask_cors import CORS
 
 #These are simpler than serilizaers i reckon
@@ -71,31 +76,73 @@ SYSTEM_PROMPT = (
 
 
 #The below functions get the document from S3 based on file_key (passed in body)
-#Extract the text
+#Extract the text based on the extension
 #Ask Llama to summarize
 #Return Response
 
 #The next steps are implementing queueing and i think flutter should generate unique strings for key not use file name
 
-def extract_text_from_docx(docx_file):
-    doc = docx.Document(docx_file)
+# Extract files with ".docx" extension
+def extract_text_from_docx(file_path):
+    doc = docx.Document(file_path)
     return "\n".join(paragraph.text for paragraph in doc.paragraphs)
+
+# Extract files with ".pdf" extension
+def extract_text_from_pdf(file_path):
+    try:
+        reader = PdfReader(file_path)
+        text = ''
+        for page in reader.pages:
+            text += page.extract_text() or ''
+        return text
+    except Exception as e:
+        raise Exception(f"Error reading PDF file: {str(e)}")
+    
+# Extract files with ".txt" extension
+def extract_text_from_txt(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+# Convert ".doc" files to ".txt" files
+def convert_doc_to_txt_windows(doc_path):
+    word = win32com.client.Dispatch("Word.Application")
+    doc = word.Documents.Open(doc_path)
+    txt_path = doc_path.replace('.doc', '.txt')
+    doc.SaveAs(txt_path, FileFormat=2) # 2 is for .txt
+    doc.Close()
+    word.Close()
+    word.Quit()
+    return txt_path
 
 def extract_text_from_s3(bucket_name, file_key):
     try:
         # Download file from S3
         file_obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
         file_content = file_obj['Body'].read()
+
+        # Get the file extension
+        ext = os.path.splitext(file_key)[1].lower()
         
         # Save file to a temporary location to read the text
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx', mode='wb') as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext, mode='wb') as temp_file:
             temp_file.write(file_content)
             temp_file_path = temp_file.name
         print(f"Temp file created at: {temp_file_path}")
         print(f"File exists: {os.path.exists(temp_file_path)}")
         print(f"File size: {os.path.getsize(temp_file_path)} bytes")
         
-        return extract_text_from_docx(temp_file_path)
+        # Determine extract tool based on file extension
+        if ext == '.docx':
+            return extract_text_from_docx(temp_file_path)
+        elif ext == '.pdf':
+            return extract_text_from_pdf(temp_file_path)
+        elif ext == '.txt':
+            return extract_text_from_txt(temp_file_path)
+        elif ext == '.doc':
+            txt_path = convert_doc_to_txt_windows(temp_file_path)
+            return extract_text_from_txt(txt_path)
+        else:
+            raise Exception(f"Unsupported file format: {ext}")
     
     except NoCredentialsError:
         raise Exception("AWS credentials are invalid or not configured.")
@@ -105,7 +152,7 @@ def extract_text_from_s3(bucket_name, file_key):
 def summarize_text_with_llama(text):
     payload = {
         "model": "llama3.2",
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Please summarize the following: {text}"}],
+        "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Summarise this text: {text}"}],
         "stream": False,
         "temperature": 0.0,
         "top_p": 1.0,
