@@ -167,7 +167,7 @@ def summarize_text_with_llama(text):
     except requests.exceptions.RequestException as e:
         raise Exception(f"Failed to get a response from Llama API: {str(e)}")
 
-@app.route('/process-docx', methods=['POST'])
+@app.route('/process-file', methods=['POST'])
 def process_docx():
     # Get the filename from the request
     data = request.get_json()
