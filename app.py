@@ -114,6 +114,12 @@ def convert_doc_to_txt_windows(doc_path):
     word.Quit()
     return txt_path
 
+# Delete file from S3
+def delete_file_from_s3(bucket_name, key):
+    s3 = boto3.client('s3')
+    s3.delete_object(Bucket=bucket_name, Key=key)
+    print(f"File {key} deleted from bucket {bucket_name}.")
+
 def extract_text_from_s3(bucket_name, file_key):
     try:
         # Download file from S3
@@ -182,6 +188,12 @@ def process_file():
         
         # Summarize the text with Llama
         summary = summarize_text_with_llama(extracted_text)
+
+         # Attempt to delete the file but don't fail if it doesn't work
+        try:
+            delete_file_from_s3(AWS_S3_BUCKET_NAME, file_key)
+        except Exception as delete_error:
+            print(f"Warning: Failed to delete file from S3: {delete_error}")
         
         return jsonify({"summary": summary}), 200
     
