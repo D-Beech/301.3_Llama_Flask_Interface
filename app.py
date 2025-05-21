@@ -168,7 +168,7 @@ def summarize_text_with_llama(text):
         raise Exception(f"Failed to get a response from Llama API: {str(e)}")
 
 @app.route('/process-file', methods=['POST'])
-def process_docx():
+def process_file():
     # Get the filename from the request
     data = request.get_json()
     file_key = data.get('file_key')
@@ -177,7 +177,7 @@ def process_docx():
         return jsonify({"error": "File key is required"}), 400
     
     try:
-        # Extract text from DOCX file stored in S3
+        # Extract text from file stored in S3
         extracted_text = extract_text_from_s3(AWS_S3_BUCKET_NAME, file_key)
         
         # Summarize the text with Llama
