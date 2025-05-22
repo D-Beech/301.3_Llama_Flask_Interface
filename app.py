@@ -17,9 +17,8 @@ import os
 
 import tempfile
 
-
-
-
+from guardrails import Guard
+from validators import contains_banned_pokemon
 
 
 @dataclass
@@ -136,8 +135,6 @@ def process_docx():
 
 
 
-
-
 #This route generates presigned url for uploading documents to s3
 #Currently any file type is accepted, flutter app needs to only allowe doc, docx, pdf, txt
 @app.route('/generate-upload-url', methods=['POST'])
@@ -180,8 +177,59 @@ def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_nam
     )
 
 
-# Stream chat endpoint
-# This post api has streaming enabled, streaming will also need to be enabled in Flutter
+# # Stream chat endpoint
+# # This post api has streaming enabled, streaming will also need to be enabled in Flutter
+# @app.route('/stream_chat', methods=['POST'])
+# def stream_chat():
+#     data = request.get_json()
+#     payload = ChatPayload(
+#         message=data.get("message", ""),
+#         context=data.get("context", []),
+#         displayName=data.get("displayName", "unknown"),
+#         tone=data.get("tone", 0),
+#         vocab_complexity=data.get("vocab_complexity", 0),
+#         token_length=data.get("token_length", 0)
+#     )
+
+#     result = guard.parse(payload.message)
+
+#     if not result.validation_passed:
+#         print("This should have been blocked")
+#         # return appropriate HTTP response, e.g. 400 or 403, not 300
+#         return jsonify({"response": "Blocked by Guardrails"}), 400
+
+#     sys_prompt = build_system_prompt(
+#         vocab_level=payload.vocab_complexity,
+#         tone_level=payload.tone,
+#         display_name=payload.displayName,
+#         token_length=payload.token_length
+#     )
+
+#     print(payload.message, 'look here')
+
+#     def generate():
+#         with requests.post(
+#             LLAMA_SERVER_URL,
+#             json={
+#                 "model": "llama3.2",
+#                 "messages": [{"role": "system", "content": sys_prompt}] +
+#                             payload.context +
+#                             [{"role": "user", "content": payload.message}],
+#                 "stream": True
+#             },
+#             stream=True
+#         ) as r:
+#             for line in r.iter_lines():
+#                 if line:
+#                     data = json.loads(line)
+#                     content = data.get("message", {}).get("content", "")
+#                     if content:
+#                         yield content
+
+#     return Response(generate(), content_type='text/plain')
+
+
+
 @app.route('/stream_chat', methods=['POST'])
 def stream_chat():
     data = request.get_json()
@@ -194,14 +242,22 @@ def stream_chat():
         token_length=data.get("token_length", 0)
     )
 
-    sys_prompt = build_system_prompt(
-        vocab_level=payload.vocab_complexity,
-        tone_level=payload.tone,
-        display_name=payload.displayName,
-        token_length=payload.token_length
-    )
+    # Custom validation instead of guardrails
+    # if profanity.contains_profanity(payload.message):
+    #     return jsonify({"response": "Blocked: profanity detected."}), 400
 
-    print(payload.message, 'look here')
+    if contains_banned_pokemon(payload.message):
+        payload.message = ""
+        sys_prompt = "User attempted to talk about banned content, do not respond except for error message"
+        payload.context = []
+
+    else:
+        sys_prompt = build_system_prompt(
+            vocab_level=payload.vocab_complexity,
+            tone_level=payload.tone,
+            display_name=payload.displayName,
+            token_length=payload.token_length
+        )
 
     def generate():
         with requests.post(
@@ -217,10 +273,15 @@ def stream_chat():
         ) as r:
             for line in r.iter_lines():
                 if line:
-                    data = json.loads(line)
-                    content = data.get("message", {}).get("content", "")
-                    if content:
-                        yield content
+                    try:
+                        data = json.loads(line)
+                        content = data.get("message", {}).get("content", "")
+                        if content:
+                            if contains_banned_pokemon(content):
+                                yield "Error, generated banned content\n"
+                            yield content
+                    except json.JSONDecodeError:
+                        continue
 
     return Response(generate(), content_type='text/plain')
 
