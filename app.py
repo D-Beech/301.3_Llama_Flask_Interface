@@ -190,10 +190,10 @@ def process_file():
         summary = summarize_text_with_llama(extracted_text)
 
          # Attempt to delete the file but don't fail if it doesn't work
-        try:
-            delete_file_from_s3(AWS_S3_BUCKET_NAME, file_key)
-        except Exception as delete_error:
-            print(f"Warning: Failed to delete file from S3: {delete_error}")
+        # try:
+        #     delete_file_from_s3(AWS_S3_BUCKET_NAME, file_key)
+        # except Exception as delete_error:
+        #     print(f"Warning: Failed to delete file from S3: {delete_error}")
         
         return jsonify({"summary": summary}), 200
     
@@ -240,7 +240,7 @@ def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_nam
     tones = ['friendly', 'extremely aggressive', 'formal']
 
     return (
-        f"You are an educational chatbot called Juan, respond using a {tones[tone_level]} tone. "
+        f"You are an educational chatbot called EduBot, respond using a {tones[tone_level]} tone. "
         f"Respond using {vocab_levels[vocab_level]} vocabulary. Do not talk about Pokemon. "
         f"Give {token_lengths[token_length]} responses only. The name of the user is {display_name}."
     )
