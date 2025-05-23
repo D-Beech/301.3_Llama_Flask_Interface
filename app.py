@@ -22,6 +22,13 @@ from validators import contains_banned_pokemon
 
 import logging
 
+# Configure logging
+logging.basicConfig(
+    filename='app.log',
+    level=logging.INFO,  # Use DEBUG for more verbose output
+    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+)
+
 
 @dataclass
 class ContextItem:
@@ -250,6 +257,7 @@ def stream_chat():
 
     if contains_banned_pokemon(payload.message):
         print("User Input Blocked: ", payload.message)
+        app.logger.error("Llm Output Blocked: %s",  payload.message)
         payload.message = ""
         sys_prompt = "User attempted to talk about banned content, do not respond except for error message"
         payload.context = []
@@ -287,6 +295,7 @@ def stream_chat():
                             if contains_banned_pokemon(buffer):
                                 yield "\n\n| Error, generated restricted content. |\n"
                                 print("Llm Output Blocked: ", buffer)
+                                app.logger.error("Llm Output Blocked: %s",  buffer)
                                 return  # Stop streaming immediately
                             yield content
                     except json.JSONDecodeError:
