@@ -2,8 +2,7 @@ from guardrails.validator_base import validators_registry
 import re
 from better_profanity import profanity
 
-from better_profanity import profanity
-import re
+
 
 
 # Initialize the profanity filter

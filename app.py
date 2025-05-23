@@ -20,6 +20,8 @@ import tempfile
 from guardrails import Guard
 from validators import contains_banned_pokemon
 
+import logging
+
 
 @dataclass
 class ContextItem:
@@ -247,9 +249,11 @@ def stream_chat():
     #     return jsonify({"response": "Blocked: profanity detected."}), 400
 
     if contains_banned_pokemon(payload.message):
+        print("User Input Blocked: ", payload.message)
         payload.message = ""
         sys_prompt = "User attempted to talk about banned content, do not respond except for error message"
         payload.context = []
+
 
     else:
         sys_prompt = build_system_prompt(
@@ -260,6 +264,8 @@ def stream_chat():
         )
 
     def generate():
+        buffer = ""  # Store generated text so far
+
         with requests.post(
             LLAMA_SERVER_URL,
             json={
@@ -277,13 +283,19 @@ def stream_chat():
                         data = json.loads(line)
                         content = data.get("message", {}).get("content", "")
                         if content:
-                            if contains_banned_pokemon(content):
-                                yield "Error, generated banned content\n"
+                            buffer += content # without this the check will only check against tokens which may be longer than a banned word
+                            if contains_banned_pokemon(buffer):
+                                yield "\n\n| Error, generated restricted content. |\n"
+                                print("Llm Output Blocked: ", buffer)
+                                return  # Stop streaming immediately
                             yield content
                     except json.JSONDecodeError:
                         continue
 
     return Response(generate(), content_type='text/plain')
+
+
+
 
 
 
