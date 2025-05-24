@@ -1,13 +1,18 @@
-2025-05-09 09:48:45,734 - WARNING -  * Debugger is active!
-2025-05-09 09:48:45,734 - INFO -  * Debugger PIN: 490-085-710
-2025-05-09 09:48:48,828 - INFO - Datu's app is running
-2025-05-09 09:48:51,141 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on http://127.0.0.1:5000
-2025-05-09 09:48:51,156 - INFO - [33mPress CTRL+C to quit[0m
-2025-05-09 09:48:51,156 - INFO -  * Restarting with stat
-2025-05-09 09:48:52,271 - WARNING -  * Debugger is active!
-2025-05-09 09:48:52,318 - INFO -  * Debugger PIN: 490-085-710
-2025-05-09 09:49:53,269 - INFO -  * Detected change in 'C:\\Users\\datub\\OneDrive\\Desktop\\Cloud Computing 2\\301.3_Llama_Flask_Interface\\app.py', reloading
-2025-05-09 09:49:53,367 - INFO -  * Restarting with stat
-2025-05-09 09:53:11,113 - INFO -  * Restarting with stat
-2025-05-09 09:55:02,627 - INFO -  * Restarting with stat
+2025-05-23 22:37:05,843 INFO: Found credentials in environment variables. [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\botocore\credentials.py:1213]
+2025-05-23 22:37:05,913 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5001 [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:37:05,913 INFO: [33mPress CTRL+C to quit[0m [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:37:05,913 INFO:  * Restarting with stat [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:37:08,180 INFO: Found credentials in environment variables. [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\botocore\credentials.py:1213]
+2025-05-23 22:37:08,243 WARNING:  * Debugger is active! [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:37:08,243 INFO:  * Debugger PIN: 365-112-172 [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:37:36,640 INFO: 127.0.0.1 - - [23/May/2025 22:37:36] "OPTIONS /stream_chat HTTP/1.1" 200 - [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:37:44,949 INFO: 127.0.0.1 - - [23/May/2025 22:37:44] "POST /stream_chat HTTP/1.1" 200 - [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:37:48,582 INFO: 127.0.0.1 - - [23/May/2025 22:37:48] "OPTIONS /stream_chat HTTP/1.1" 200 - [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:37:48,586 ERROR: Llm Output Blocked: pikachu [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\app.py:260]
+2025-05-23 22:37:52,522 INFO: 127.0.0.1 - - [23/May/2025 22:37:52] "POST /stream_chat HTTP/1.1" 200 - [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:38:13,901 INFO: 127.0.0.1 - - [23/May/2025 22:38:13] "OPTIONS /stream_chat HTTP/1.1" 200 - [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:38:16,449 INFO: 127.0.0.1 - - [23/May/2025 22:38:16] "POST /stream_chat HTTP/1.1" 200 - [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:38:39,873 INFO: 127.0.0.1 - - [23/May/2025 22:38:39] "OPTIONS /stream_chat HTTP/1.1" 200 - [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:38:42,457 INFO: 127.0.0.1 - - [23/May/2025 22:38:42] "POST /stream_chat HTTP/1.1" 200 - [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\venv\Lib\site-packages\werkzeug\_internal.py:97]
+2025-05-23 22:38:43,030 ERROR: Llm Output Blocked: Haha, okay Alex! Pikachu [in C:\Users\datub\OneDrive\Desktop\Cloud Computing 2\301.3_Llama_Flask_Interface\app.py:298]
