@@ -28,8 +28,6 @@ import tempfile
 
 
 
-
-
 @dataclass
 class ContextItem:
     role: str  # "user" or "assistant"
@@ -267,7 +265,20 @@ def stream_chat():
         token_length=payload.token_length
     )
 
-    print(payload.message, 'look here')
+    if contains_banned_pokemon(payload.message):
+        print("User Input Blocked: ", payload.message)
+        payload.message = ""
+        sys_prompt = "User attempted to talk about banned content, do not respond except for error message"
+        payload.context = []
+
+
+    else:
+        sys_prompt = build_system_prompt(
+            vocab_level=payload.vocab_complexity,
+            tone_level=payload.tone,
+            display_name=payload.displayName,
+            token_length=payload.token_length
+        )
 
     def generate():
         with requests.post(
@@ -283,14 +294,20 @@ def stream_chat():
         ) as r:
             for line in r.iter_lines():
                 if line:
-                    data = json.loads(line)
-                    content = data.get("message", {}).get("content", "")
-                    if content:
-                        # Format as Server-Sent Event
-                        yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
+                    try:
+                        data = json.loads(line)
+                        content = data.get("message", {}).get("content", "")
+                        if content:
+                            buffer += content # without this the check will only check against tokens which may be longer than a banned word
+                            if contains_banned_pokemon(buffer):
+                                yield "\n\n| Error, generated restricted content. |\n"
+                                print("Llm Output Blocked: ", buffer)
+                                return  # Stop streaming immediately
+                            yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
+                    except json.JSONDecodeError:
+                        continue
 
     return Response(generate(), content_type='text/event-stream')
-
 
 
 
