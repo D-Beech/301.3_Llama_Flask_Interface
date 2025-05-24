@@ -283,20 +283,14 @@ def stream_chat():
         ) as r:
             for line in r.iter_lines():
                 if line:
-                    try:
-                        data = json.loads(line)
-                        content = data.get("message", {}).get("content", "")
-                        if content:
-                            buffer += content # without this the check will only check against tokens which may be longer than a banned word
-                            if contains_banned_pokemon(buffer):
-                                yield "\n\n| Error, generated restricted content. |\n"
-                                print("Llm Output Blocked: ", buffer)
-                                return  # Stop streaming immediately
-                            yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
-                    except json.JSONDecodeError:
-                        continue
+                    data = json.loads(line)
+                    content = data.get("message", {}).get("content", "")
+                    if content:
+                        # Format as Server-Sent Event
+                        yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
 
     return Response(generate(), content_type='text/event-stream')
+
 
 
 

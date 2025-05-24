@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> parent of 69e3520 (Merge branch 'main' into stephen_test_branch)
 2025-05-09 09:48:45,734 - WARNING -  * Debugger is active!
 2025-05-09 09:48:45,734 - INFO -  * Debugger PIN: 490-085-710
 2025-05-09 09:48:48,828 - INFO - Datu's app is running
@@ -12,5 +15,8 @@
 2025-05-09 09:49:53,367 - INFO -  * Restarting with stat
 2025-05-09 09:53:11,113 - INFO -  * Restarting with stat
 2025-05-09 09:55:02,627 - INFO -  * Restarting with stat
+<<<<<<< HEAD
 =======
 >>>>>>> parent of d2d4ea4 (Added logging)
+=======
+>>>>>>> parent of 69e3520 (Merge branch 'main' into stephen_test_branch)
