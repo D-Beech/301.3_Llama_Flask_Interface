@@ -28,6 +28,8 @@ import tempfile
 
 
 
+
+
 @dataclass
 class ContextItem:
     role: str  # "user" or "assistant"
@@ -265,20 +267,7 @@ def stream_chat():
         token_length=payload.token_length
     )
 
-    if contains_banned_pokemon(payload.message):
-        print("User Input Blocked: ", payload.message)
-        payload.message = ""
-        sys_prompt = "User attempted to talk about banned content, do not respond except for error message"
-        payload.context = []
-
-
-    else:
-        sys_prompt = build_system_prompt(
-            vocab_level=payload.vocab_complexity,
-            tone_level=payload.tone,
-            display_name=payload.displayName,
-            token_length=payload.token_length
-        )
+    print(payload.message, 'look here')
 
     def generate():
         with requests.post(
