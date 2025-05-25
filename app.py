@@ -1,9 +1,15 @@
 from flask import Flask, render_template, request, jsonify, Response
 import requests
 import json
+
 #import docx_summary
 import docx
 from flask_cors import CORS
+
+# pdf summary support
+from PyPDF2 import PdfReader
+
+import win32com.client
 
 #These are simpler than serilizaers i reckon
 from dataclasses import dataclass, field
@@ -86,17 +92,65 @@ def extract_text_from_docx(docx_file):
     doc = docx.Document(docx_file)
     return "\n".join(paragraph.text for paragraph in doc.paragraphs)
 
+# Extract files with ".pdf" extension
+def extract_text_from_pdf(file_path):
+    try:
+        reader = PdfReader(file_path)
+        text = ''
+        for page in reader.pages:
+            text += page.extract_text() or ''
+        return text
+    except Exception as e:
+        raise Exception(f"Error reading PDF file: {str(e)}")
+    
+# Extract files with ".txt" extension
+def extract_text_from_txt(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+# Convert ".doc" files to ".txt" files
+def convert_doc_to_txt_windows(doc_path):
+    word = win32com.client.Dispatch("Word.Application")
+    doc = word.Documents.Open(doc_path)
+    txt_path = doc_path.replace('.doc', '.txt')
+    doc.SaveAs(txt_path, FileFormat=2) # 2 is for .txt
+    doc.Close()
+    word.Close()
+    word.Quit()
+    return txt_path
+
+# Delete file from S3
+def delete_file_from_s3(bucket_name, key):
+    s3 = boto3.client('s3')
+    s3.delete_object(Bucket=bucket_name, Key=key)
+    print(f"File {key} deleted from bucket {bucket_name}.")
+
 def extract_text_from_s3(bucket_name, file_key):
     try:
         # Download file from S3
         file_obj = s3_client.get_object(Bucket=bucket_name, Key=file_key)
         file_content = file_obj['Body'].read()
+
+        # Get the file extension
+        ext = os.path.splitext(file_key)[1].lower()
         
         # Save file to a temporary location to read the text
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
             temp_file.write(file_content)
             temp_file_path = temp_file.name
-        return extract_text_from_docx(temp_file_path)
+    
+        # Determine extract tool based on file extension
+        if ext == '.docx':
+            return extract_text_from_docx(temp_file_path)
+        elif ext == '.pdf':
+            return extract_text_from_pdf(temp_file_path)
+        elif ext == '.txt':
+            return extract_text_from_txt(temp_file_path)
+        elif ext == '.doc':
+            txt_path = convert_doc_to_txt_windows(temp_file_path)
+            return extract_text_from_txt(txt_path)
+        else:
+            raise Exception(f"Unsupported file format: {ext}")
     
     except NoCredentialsError:
         raise Exception("AWS credentials are invalid or not configured.")
@@ -121,7 +175,7 @@ def summarize_text_with_llama(text):
     except requests.exceptions.RequestException as e:
         raise Exception(f"Failed to get a response from Llama API: {str(e)}")
 
-@app.route('/process-docx', methods=['POST'])
+@app.route('/process-file', methods=['POST'])
 def process_docx():
     # Get the filename from the request
     data = request.get_json()
@@ -136,6 +190,12 @@ def process_docx():
         
         # Summarize the text with Llama
         summary = summarize_text_with_llama(extracted_text)
+
+        # Attempt to delete the file but don't fail if it doesn't work
+        # try:
+        #     delete_file_from_s3(AWS_S3_BUCKET_NAME, file_key)
+        # except Exception as delete_error:
+        #     print(f"Warning: Failed to delete file from S3: {delete_error}")
         
         return jsonify({"summary": summary}), 200
     
@@ -297,11 +357,12 @@ def stream_chat():
                                 print("Llm Output Blocked: ", buffer)
                                 app.logger.error("Llm Output Blocked: %s",  buffer)
                                 return  # Stop streaming immediately
-                            yield content
+                            # Format as Server-Sent Event
+                            yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
                     except json.JSONDecodeError:
                         continue
 
-    return Response(generate(), content_type='text/plain')
+    return Response(generate(), content_type='text/event-stream')
 
 
 
