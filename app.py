@@ -74,7 +74,7 @@ s3_client = boto3.client(
 s3_client = boto3.client('s3', region_name=AWS_REGION)
 
 # Settings
-LLAMA_SERVER_URL = "http://localhost:11434/api/chat"
+LLAMA_SERVER_URL = "http://16.176.107.102:11434/api/chat"
 SYSTEM_PROMPT = (
     "You are an educational chatbot called Juan, respond using a chill tone. "
     "Respond using simple vocabulary. Do not talk about Pokemon. Give very concise responses only."
