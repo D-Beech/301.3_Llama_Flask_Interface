@@ -17,7 +17,6 @@ import os
 
 import tempfile
 
-from guardrails import Guard
 from validators import contains_banned_pokemon
 
 import logging
@@ -68,10 +67,10 @@ s3_client = boto3.client(
 s3_client = boto3.client('s3', region_name=AWS_REGION)
 
 # Settings
-LLAMA_SERVER_URL = "http://localhost:11434/api/chat"
+LLAMA_SERVER_URL = "http://16.176.107.102:11434/api/chat"
 SYSTEM_PROMPT = (
-    "You are an educational chatbot called Juan, respond using a chill tone. "
-    "Respond using simple vocabulary. Do not talk about Pokemon. Give very concise responses only."
+    "You are an educational chatbot called EduBot, respond using a chill tone. "
+    "Respond using simple vocabulary. Give very concise responses only. "
 )
 
 
@@ -239,6 +238,70 @@ def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_nam
 
 
 
+# @app.route('/stream_chat', methods=['POST'])
+# def stream_chat():
+#     data = request.get_json()
+#     payload = ChatPayload(
+#         message=data.get("message", ""),
+#         context=data.get("context", []),
+#         displayName=data.get("displayName", "unknown"),
+#         tone=data.get("tone", 0),
+#         vocab_complexity=data.get("vocab_complexity", 0),
+#         token_length=data.get("token_length", 0)
+#     )
+
+#     # Custom validation instead of guardrails
+#     # if profanity.contains_profanity(payload.message):
+#     #     return jsonify({"response": "Blocked: profanity detected."}), 400
+
+#     if contains_banned_pokemon(payload.message):
+#         print("User Input Blocked: ", payload.message)
+#         app.logger.error("Llm Output Blocked: %s",  payload.message)
+#         payload.message = ""
+#         sys_prompt = "User attempted to talk about banned content, do not respond except for error message"
+#         payload.context = []
+
+
+#     else:
+#         sys_prompt = build_system_prompt(
+#             vocab_level=payload.vocab_complexity,
+#             tone_level=payload.tone,
+#             display_name=payload.displayName,
+#             token_length=payload.token_length
+#         )
+
+#     def generate():
+#         buffer = ""  # Store generated text so far
+
+#         with requests.post(
+#             LLAMA_SERVER_URL,
+#             json={
+#                 "model": "llama3.2",
+#                 "messages": [{"role": "system", "content": sys_prompt}] +
+#                             payload.context +
+#                             [{"role": "user", "content": payload.message}],
+#                 "stream": True
+#             },
+#             stream=True
+#         ) as r:
+#             for line in r.iter_lines():
+#                 if line:
+#                     try:
+#                         data = json.loads(line)
+#                         content = data.get("message", {}).get("content", "")
+#                         if content:
+#                             buffer += content # without this the check will only check against tokens which may be longer than a banned word
+#                             if contains_banned_pokemon(buffer):
+#                                 yield "\n\n| Error, generated restricted content. |\n"
+#                                 print("Llm Output Blocked: ", buffer)
+#                                 app.logger.error("Llm Output Blocked: %s",  buffer)
+#                                 return  # Stop streaming immediately
+#                             yield content
+#                     except json.JSONDecodeError:
+#                         continue
+
+#     return Response(generate(), content_type='text/plain')
+
 @app.route('/stream_chat', methods=['POST'])
 def stream_chat():
     data = request.get_json()
@@ -250,30 +313,17 @@ def stream_chat():
         vocab_complexity=data.get("vocab_complexity", 0),
         token_length=data.get("token_length", 0)
     )
-
-    # Custom validation instead of guardrails
-    # if profanity.contains_profanity(payload.message):
-    #     return jsonify({"response": "Blocked: profanity detected."}), 400
-
-    if contains_banned_pokemon(payload.message):
-        print("User Input Blocked: ", payload.message)
-        app.logger.error("Llm Output Blocked: %s",  payload.message)
-        payload.message = ""
-        sys_prompt = "User attempted to talk about banned content, do not respond except for error message"
-        payload.context = []
-
-
-    else:
-        sys_prompt = build_system_prompt(
-            vocab_level=payload.vocab_complexity,
-            tone_level=payload.tone,
-            display_name=payload.displayName,
-            token_length=payload.token_length
-        )
-
+ 
+    sys_prompt = build_system_prompt(
+        vocab_level=payload.vocab_complexity,
+        tone_level=payload.tone,
+        display_name=payload.displayName,
+        token_length=payload.token_length
+    )
+ 
+    print(payload.message, 'look here')
+ 
     def generate():
-        buffer = ""  # Store generated text so far
-
         with requests.post(
             LLAMA_SERVER_URL,
             json={
@@ -287,21 +337,14 @@ def stream_chat():
         ) as r:
             for line in r.iter_lines():
                 if line:
-                    try:
-                        data = json.loads(line)
-                        content = data.get("message", {}).get("content", "")
-                        if content:
-                            buffer += content # without this the check will only check against tokens which may be longer than a banned word
-                            if contains_banned_pokemon(buffer):
-                                yield "\n\n| Error, generated restricted content. |\n"
-                                print("Llm Output Blocked: ", buffer)
-                                app.logger.error("Llm Output Blocked: %s",  buffer)
-                                return  # Stop streaming immediately
-                            yield content
-                    except json.JSONDecodeError:
-                        continue
-
-    return Response(generate(), content_type='text/plain')
+                    data = json.loads(line)
+                    content = data.get("message", {}).get("content", "")
+                    if content:
+                        # Format as Server-Sent Event
+                        yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
+ 
+    return Response(generate(), content_type='text/event-stream')
+ 
 
 
 
