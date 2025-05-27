@@ -1,10 +1,11 @@
 from flask import Blueprint, request, jsonify, Response
 import requests
 
-from app.utils.guards import guard
+# from app.utils.guards import guard
 from app.utils.summarizer import build_system_prompt, generate
 from app.models import ChatPayload
 
+import app.utils.custom_guards as cg
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -26,6 +27,14 @@ def stream_chat():
         display_name=payload.displayName,
         token_length=payload.token_length
     )
+
+    if cg.contains_banned_content(payload.message):
+        sys_prompt = "User attempted to talk about NSFW content, create error message warning them not to"
+        payload.message = ""
+        payload.context = []
+
+    
+
 
     # try:
     #     validated = guard.validate(payload.message)
