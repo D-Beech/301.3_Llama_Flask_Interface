@@ -1,6 +1,6 @@
-from flask import Blueprint, request, jsonify
-from app.utils.s3helpers import extract_text_from_s3, s3_client
-from app.utils.summarizer import summarize_text_with_llama
+from flask import Blueprint, request, jsonify, Response
+from app.utils.s3helpers import extract_text_auto, s3_client
+from app.utils.summarizer import generate
 from botocore.exceptions import NoCredentialsError
 import os
 
@@ -9,17 +9,27 @@ docx_bp = Blueprint('docx', __name__)
 @docx_bp.route('/process-docx', methods=['POST'])
 def process_docx():
     file_key = request.json.get('file_key')
+    print("file_key:", file_key)
+    
     if not file_key:
         return jsonify({"error": "File key is required"}), 400
 
     try:
         bucket_name = os.getenv("AWS_S3_BUCKET_NAME")
-        text = extract_text_from_s3(bucket_name, file_key)
-        summary = summarize_text_with_llama(text)
-        return jsonify({"summary": summary})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("Using bucket:", bucket_name)
+        text = extract_text_auto(bucket_name, file_key)
+        print("Extracted text length:", len(text))
 
+        # Optional safety truncation
+        MAX_INPUT_LENGTH = 500
+        text = "Summarize this text: " + text[:MAX_INPUT_LENGTH]
+
+        sys_prompt = "You are JuanBot. Summarize the following document text clearly and helpfully."
+
+        return Response(generate(text, [], sys_prompt), content_type='text/event-stream')
+    except Exception as e:
+        print("Error during /process-docx:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 @docx_bp.route('/generate-upload-url', methods=['POST'])
 def generate_upload_url():

@@ -1,15 +1,35 @@
-import requests
+import requests, json
 
-def summarize_text_with_llama(text):
-    response = requests.post("http://localhost:11434/api/chat", json={
-        "model": "llama3.2",
-        "messages": [
-            {"role": "system", "content": "Summarize this"},
-            {"role": "user", "content": text}
-        ],
-        "stream": False
-    })
-    return response.json().get("message", {}).get("content", "")
+def generate(message, context, sys_prompt):
+    print(message, context, sys_prompt,flush=True)
+    with requests.post(
+        "http://localhost:11434/api/chat",
+        json={
+            "model": "llama3.2",
+            "messages": [{"role": "system", "content": sys_prompt}] +
+                       context +
+                       [{"role": "user", "content": message}],
+            "stream": True
+        },
+        stream=True
+    ) as r:
+        for line in r.iter_lines():
+            if line:
+                data = json.loads(line)
+                content = data.get("message", {}).get("content", "")
+
+                if content:
+                    try:
+                        # guard.validate(content)  # Optional validation hook
+                        yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
+                    except Exception as e:
+                        print("Blocked chunk:", repr(content), flush=True)
+                        print("Validation error:", repr(e), flush=True)
+                        yield f"data: {json.dumps({'message': {'content': ' [Response blocked due to content policy]'}})}\n\n"
+                        break
+
+
+
 
 def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_name='unknown'):
     token_lengths = ['consise', 'medium', 'long']
