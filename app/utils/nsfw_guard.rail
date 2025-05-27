@@ -1,0 +1,8 @@
+<output>
+  <string
+    name="user_input"
+    description="User input text"
+    valid-when="not regex_match(value, r'\b(fuck|shit|bitch|asshole|dick|pussy|cunt|nigger|faggot|slut|whore|cock|nude|naked|pikachu|pokemon)\b')"
+    on-fail="exception"
+  />
+</output>
