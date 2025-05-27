@@ -21,6 +21,21 @@ from validators import contains_banned_pokemon
 
 import logging
 
+# test_guardrails_validation.py
+
+from guardrails import Guard
+from guardrails.hub import DetectJailbreak, NSFWText
+
+# Setup Guard with DetectJailbreak
+# guard = Guard().use(DetectJailbreak)
+guard = Guard().use(
+    NSFWText, threshold=0.8, validation_method="sentence", on_fail="exception"
+)
+
+
+
+
+
 # Configure logging
 logging.basicConfig(
     filename='app.log',
@@ -55,6 +70,8 @@ AWS_REGION = os.getenv("AWS_REGION")
 AWS_S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
 
 
+LLAMA_EC2_IP = os.getenv("LLAMA_EC2_IP")
+
 # Create boto3 client
 s3_client = boto3.client(
     "s3",
@@ -67,7 +84,7 @@ s3_client = boto3.client(
 s3_client = boto3.client('s3', region_name=AWS_REGION)
 
 # Settings
-LLAMA_SERVER_URL = "http://16.176.107.102:11434/api/chat"
+LLAMA_SERVER_URL = f"http://localhost:11434/api/chat"
 SYSTEM_PROMPT = (
     "You are an educational chatbot called EduBot, respond using a chill tone. "
     "Respond using simple vocabulary. Give very concise responses only. "
@@ -179,128 +196,13 @@ def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_nam
     tones = ['friendly', 'extremely aggressive', 'formal']
 
     return (
-        f"You are an educational chatbot called Juan, respond using a {tones[tone_level]} tone. "
-        f"Respond using {vocab_levels[vocab_level]} vocabulary. Do not talk about Pokemon. "
-        f"Give {token_lengths[token_length]} responses only. The name of the user is {display_name}."
+        f"You are JuanBot, a helpful and friendly chatbot for helping school students. "
+        f"Do not make up facts or guess, only reply with information you are sure is accurate."
+        f"Respond using a {tones[tone_level]} tone and {vocab_levels[vocab_level]} vocabulary. "
+        f"Keep responses concise, about {token_lengths[token_length]} responses only. "
+        f"Address the user by their name, {display_name}, to keep it personal and engaging."
     )
 
-
-# # Stream chat endpoint
-# # This post api has streaming enabled, streaming will also need to be enabled in Flutter
-# @app.route('/stream_chat', methods=['POST'])
-# def stream_chat():
-#     data = request.get_json()
-#     payload = ChatPayload(
-#         message=data.get("message", ""),
-#         context=data.get("context", []),
-#         displayName=data.get("displayName", "unknown"),
-#         tone=data.get("tone", 0),
-#         vocab_complexity=data.get("vocab_complexity", 0),
-#         token_length=data.get("token_length", 0)
-#     )
-
-#     result = guard.parse(payload.message)
-
-#     if not result.validation_passed:
-#         print("This should have been blocked")
-#         # return appropriate HTTP response, e.g. 400 or 403, not 300
-#         return jsonify({"response": "Blocked by Guardrails"}), 400
-
-#     sys_prompt = build_system_prompt(
-#         vocab_level=payload.vocab_complexity,
-#         tone_level=payload.tone,
-#         display_name=payload.displayName,
-#         token_length=payload.token_length
-#     )
-
-#     print(payload.message, 'look here')
-
-#     def generate():
-#         with requests.post(
-#             LLAMA_SERVER_URL,
-#             json={
-#                 "model": "llama3.2",
-#                 "messages": [{"role": "system", "content": sys_prompt}] +
-#                             payload.context +
-#                             [{"role": "user", "content": payload.message}],
-#                 "stream": True
-#             },
-#             stream=True
-#         ) as r:
-#             for line in r.iter_lines():
-#                 if line:
-#                     data = json.loads(line)
-#                     content = data.get("message", {}).get("content", "")
-#                     if content:
-#                         yield content
-
-#     return Response(generate(), content_type='text/plain')
-
-
-
-# @app.route('/stream_chat', methods=['POST'])
-# def stream_chat():
-#     data = request.get_json()
-#     payload = ChatPayload(
-#         message=data.get("message", ""),
-#         context=data.get("context", []),
-#         displayName=data.get("displayName", "unknown"),
-#         tone=data.get("tone", 0),
-#         vocab_complexity=data.get("vocab_complexity", 0),
-#         token_length=data.get("token_length", 0)
-#     )
-
-#     # Custom validation instead of guardrails
-#     # if profanity.contains_profanity(payload.message):
-#     #     return jsonify({"response": "Blocked: profanity detected."}), 400
-
-#     if contains_banned_pokemon(payload.message):
-#         print("User Input Blocked: ", payload.message)
-#         app.logger.error("Llm Output Blocked: %s",  payload.message)
-#         payload.message = ""
-#         sys_prompt = "User attempted to talk about banned content, do not respond except for error message"
-#         payload.context = []
-
-
-#     else:
-#         sys_prompt = build_system_prompt(
-#             vocab_level=payload.vocab_complexity,
-#             tone_level=payload.tone,
-#             display_name=payload.displayName,
-#             token_length=payload.token_length
-#         )
-
-#     def generate():
-#         buffer = ""  # Store generated text so far
-
-#         with requests.post(
-#             LLAMA_SERVER_URL,
-#             json={
-#                 "model": "llama3.2",
-#                 "messages": [{"role": "system", "content": sys_prompt}] +
-#                             payload.context +
-#                             [{"role": "user", "content": payload.message}],
-#                 "stream": True
-#             },
-#             stream=True
-#         ) as r:
-#             for line in r.iter_lines():
-#                 if line:
-#                     try:
-#                         data = json.loads(line)
-#                         content = data.get("message", {}).get("content", "")
-#                         if content:
-#                             buffer += content # without this the check will only check against tokens which may be longer than a banned word
-#                             if contains_banned_pokemon(buffer):
-#                                 yield "\n\n| Error, generated restricted content. |\n"
-#                                 print("Llm Output Blocked: ", buffer)
-#                                 app.logger.error("Llm Output Blocked: %s",  buffer)
-#                                 return  # Stop streaming immediately
-#                             yield content
-#                     except json.JSONDecodeError:
-#                         continue
-
-#     return Response(generate(), content_type='text/plain')
 
 @app.route('/stream_chat', methods=['POST'])
 def stream_chat():
@@ -320,10 +222,23 @@ def stream_chat():
         display_name=payload.displayName,
         token_length=payload.token_length
     )
+
+    # try:
+    #     validated = guard.validate(payload.message)
+    #     print('Prompt passed guardrails')
+    # except Exception as e:
+    #     print(" Failed Validation")
+    #     print(f'Error: {e}')
+    #     sys_prompt = "User attempted to talk about NSFW content, create error message warning them not to"
+    #     payload.message = ""
+    #     payload.context = []
+
  
     print(payload.message, 'look here')
  
     def generate():
+        buffer = ""  # Store full or partial response for context
+
         with requests.post(
             LLAMA_SERVER_URL,
             json={
@@ -339,63 +254,24 @@ def stream_chat():
                 if line:
                     data = json.loads(line)
                     content = data.get("message", {}).get("content", "")
+
                     if content:
-                        # Format as Server-Sent Event
+                        buffer += content
+
+                        # Validate the growing output (can adjust frequency or size)
+                        try:
+                            guard.validate(buffer)  # this might be slow for large buffers
+                        except Exception as e:
+                            # If validation fails, stream a warning then break
+                            yield f"data: {json.dumps({'message': {'content': ' [Response blocked due to content policy]'}})}\n\n"
+                            break
+
+                        # If passed, stream this chunk
                         yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
+
  
     return Response(generate(), content_type='text/event-stream')
  
-
-
-
-
-
-
-
-# This is the regular POST chat endpoint
-# Sends a single message, no streaming. Easier to use.
-
-@app.route("/safe_chat", methods=["POST"])
-def safe_chat():
-    # Deserialize the JSON request into a ChatRequest object
-    try:
-        data = request.get_json()
-        chat_req = ChatPayload(**data)
-    except Exception as e:
-        return jsonify({"error": f"Invalid data: {str(e)}"}), 400
-
-    # Get the user message and context from the dataclass
-    user_message = chat_req.message
-    context = chat_req.context
-
-    # Check if the user message is provided
-
-    # Append the user message to context
-    context.append({"role": "user", "content": user_message})
-
-    # Build the payload to send to Llama API
-    payload = {
-        "model": "llama3.2",
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + context,
-        "stream": False,
-        "temperature": 0.0,
-        "top_p": 1.0,
-        "stop": ["</s>"]
-    }
-
-    try:
-        # Send the request to Llama API
-        response = requests.post(LLAMA_SERVER_URL, json=payload)
-        response.raise_for_status()
-        data = response.json()
-
-        # Get model's reply
-        model_reply = data.get("message", {}).get("content", "No response from model.")
-        return jsonify({"response": model_reply}), 200
-
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
-    
 
 #Generate Title API, in progress    
 @app.route('/make_title', methods=['POST'])
@@ -428,7 +304,7 @@ def make_title():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
-    return
+
 
 
 
@@ -436,30 +312,6 @@ def make_title():
 def home():
     return render_template('index.html')
 
-# @app.route('/fileTest', methods=['GET'])
-# def file_test():
-#     with open('CS301.2_IDD_Datu_Beech_Submission.docx', 'rb') as file:
-#         text = extract_text_from_docx(file)
-#     message = f"please summarize the following: {text}"
-
-#     payload = {
-#         "model": "llama3.2",
-#         "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": message}],
-#         "stream": False,
-#         "temperature": 0.0,
-#         "top_p": 1.0,
-#         "stop": ["</s>"]
-#     }
-
-#     try:
-#         response = requests.post(LLAMA_SERVER_URL, json=payload)
-#         response.raise_for_status()
-#         data = response.json()
-#         reply = data.get("message", {}).get("content", "No response from model.")
-#         return jsonify({"response": reply}), 200
-#     except requests.exceptions.RequestException as e:
-#         return jsonify({"error": str(e)}), 500
-
 
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    app.run( port=5001, debug=True)
