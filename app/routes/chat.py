@@ -28,10 +28,10 @@ def stream_chat():
         token_length=payload.token_length
     )
 
-    if cg.contains_banned_content(payload.message):
-        sys_prompt = "User attempted to talk about NSFW content, create error message warning them not to"
-        payload.message = ""
-        payload.context = []
+    # if cg.contains_banned_content(payload.message):
+    #     sys_prompt = "User attempted to talk about NSFW content, create error message warning them not to"
+    #     payload.message = ""
+    #     payload.context = []
 
     
 

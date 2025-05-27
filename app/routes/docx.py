@@ -3,6 +3,7 @@ from app.utils.s3helpers import extract_text_auto, s3_client
 from app.utils.summarizer import generate
 from botocore.exceptions import NoCredentialsError
 import os
+import app.utils.custom_guards as cg
 
 docx_bp = Blueprint('docx', __name__)
 
@@ -23,6 +24,9 @@ def process_docx():
         # Optional safety truncation
         MAX_INPUT_LENGTH = 500
         text = "Summarize this text: " + text[:MAX_INPUT_LENGTH]
+
+        if cg.contains_banned_content(text):
+            text = "Text contained banned content and has been removed"
 
         sys_prompt = "You are JuanBot. Summarize the following document text clearly and helpfully."
 

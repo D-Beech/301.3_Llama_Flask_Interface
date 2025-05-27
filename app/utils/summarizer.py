@@ -1,4 +1,5 @@
 import requests, json
+import app.utils.custom_guards as cg
 
 def generate(message, context, sys_prompt):
     print(message, context, sys_prompt,flush=True)
@@ -20,6 +21,8 @@ def generate(message, context, sys_prompt):
 
                 if content:
                     try:
+                        if cg.contains_banned_content(content):
+                            raise ValueError("Banned Content Identified")
                         # guard.validate(content)  # Optional validation hook
                         yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
                     except Exception as e:
