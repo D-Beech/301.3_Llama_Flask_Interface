@@ -29,3 +29,5 @@ def stream_llama_response(payload, sys_prompt, guard):
                         yield f"data: {json.dumps({'message': {'content': ' [Response blocked due to content policy]'}})}\n\n"
                         break
                     yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
+
+
