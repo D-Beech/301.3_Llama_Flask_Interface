@@ -7,6 +7,8 @@ from app.models import ChatPayload
 
 import app.utils.custom_guards as cg
 
+from app.firebase_auth import require_firebase_auth
+
 chat_bp = Blueprint('chat', __name__)
 
 @chat_bp.route('/stream_chat', methods=['POST'])
@@ -64,3 +66,11 @@ def make_title():
     response = requests.post("http://localhost:11434/api/chat", json=payload)
     content = response.json().get("message", {}).get("content", "No response.")
     return jsonify({"title": content})
+
+@chat_bp.route('/protected')
+@require_firebase_auth
+def protected():
+    return jsonify({
+        "message": f"Hello, {request.user['uid']}!",
+        "user_info": request.user
+    })

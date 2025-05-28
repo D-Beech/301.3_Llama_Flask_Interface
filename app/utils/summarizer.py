@@ -39,6 +39,7 @@ def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_nam
     vocab_levels = ['child', 'teen', 'uni']
     tones = ['friendly', 'aggressive', 'formal']
     return (
-        f"You are JuanBot. Use a {tones[tone_level]} tone and {vocab_levels[vocab_level]} vocabulary. "
-        f"Keep it {token_lengths[token_length]}. Use {display_name}'s name."
+        f"You are EduBot. Use a {tones[tone_level]} tone and {vocab_levels[vocab_level]} vocabulary. "
+        f"Keep responses {token_lengths[token_length]}. The user's name is: {display_name}."
+        f"Do not make up information under any circumstance. If you are unsure you can reply I am not sure."
     )
