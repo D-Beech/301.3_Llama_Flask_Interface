@@ -59,7 +59,7 @@ def process_file():
 
         sys_prompt = "Summarize the following document text clearly and helpfully. Do not make up information under any circumstance"
 
-        return jsonify({"summary" : generate_no_stream(text, [], sys_prompt)})
+        return jsonify({"summary" : generate_no_stream(text, [], sys_prompt), "og_text" : text})
     except Exception as e:
         print("Error during /process-docx:", str(e))
         return jsonify({"error": str(e)}), 500

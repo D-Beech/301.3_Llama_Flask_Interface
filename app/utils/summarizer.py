@@ -68,7 +68,7 @@ def generate(message, context, sys_prompt):
                         break
 
 
-
+#This one can track UID for who is generating responses that trigger guards
 def generate_w_uid(message, context, sys_prompt, uid):
     buffer = ""
     with requests.post(
@@ -104,9 +104,6 @@ def generate_w_uid(message, context, sys_prompt, uid):
         # If any leftover buffer after the stream ends yield it
         if buffer:
             yield f"data: {json.dumps({'message': {'content': buffer}})}\n\n"
-
-
-
 
 
 def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_name='unknown'):
