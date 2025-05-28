@@ -12,6 +12,7 @@ from app.firebase_auth import require_firebase_auth
 chat_bp = Blueprint('chat', __name__)
 
 @chat_bp.route('/stream_chat', methods=['POST'])
+@require_firebase_auth
 def stream_chat():
     data = request.get_json()
     payload = ChatPayload(
@@ -30,31 +31,18 @@ def stream_chat():
         token_length=payload.token_length
     )
 
-    # if cg.contains_banned_content(payload.message):
-    #     sys_prompt = "User attempted to talk about NSFW content, create error message warning them not to"
-    #     payload.message = ""
-    #     payload.context = []
+    if cg.contains_banned_content(payload.message):
+        sys_prompt = "User attempted to talk about NSFW content, create error message warning them not to"
+        payload.message = ""
+        payload.context = []
 
-    
-
-
-    # try:
-    #     validated = guard.validate(payload.message)
-    #     print('Prompt passed guardrails')
-    # except Exception as e:
-    #     print(" Failed Validation")
-    #     print(f'Error: {e}')
-    #     sys_prompt = "User attempted to talk about NSFW content, create error message warning them not to"
-    #     payload.message = ""
-    #     payload.context = []
-
- 
     print(payload.message, 'look here')
 
     return Response(generate(payload.message, payload.context, sys_prompt), content_type='text/event-stream')
 
 
 @chat_bp.route('/make_title', methods=['POST'])
+@require_firebase_auth
 def make_title():
     context = request.json.get("context", [])
     prompt = "You are to return a single concise title summarizing the conversation..."

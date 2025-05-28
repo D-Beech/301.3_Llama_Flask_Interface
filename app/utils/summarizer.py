@@ -1,6 +1,40 @@
 import requests, json
 import app.utils.custom_guards as cg
 
+def generate_no_stream(message, context, sys_prompt):
+    print(message, context, sys_prompt, flush=True)
+
+    # Send a regular (non-streaming) POST request
+    response = requests.post(
+        "http://localhost:11434/api/chat",
+        json={
+            "model": "llama3.2",
+            "messages": [{"role": "system", "content": sys_prompt}] +
+                       context +
+                       [{"role": "user", "content": message}],
+            "stream": False  # No streaming
+        }
+    )
+
+    if response.status_code != 200:
+        print(f"Error from LLM API: {response.status_code} {response.text}", flush=True)
+        return " [Error generating response]"
+
+    data = response.json()
+
+    # Assuming the response JSON structure is:
+    # { "message": { "content": "<full text>" } }
+    content = data.get("message", {}).get("content", "")
+
+    # Check for banned content once on the full generated content
+    if cg.contains_banned_content(content):
+        print("Banned content detected in final response", flush=True)
+        return " [Response redacted due to content policy]"
+
+    return content
+
+
+
 def generate(message, context, sys_prompt):
     print(message, context, sys_prompt,flush=True)
     with requests.post(

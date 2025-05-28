@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, Response
 from app.utils.s3helpers import extract_text_auto, s3_client
-from app.utils.summarizer import generate
+from app.utils.summarizer import generate, generate_no_stream
 from botocore.exceptions import NoCredentialsError
 import os
 import app.utils.custom_guards as cg
@@ -22,18 +22,48 @@ def process_docx():
         print("Extracted text length:", len(text))
 
         # Optional safety truncation
-        MAX_INPUT_LENGTH = 500
+        MAX_INPUT_LENGTH = 12000 # approx 2000 words
         text = "Summarize this text: " + text[:MAX_INPUT_LENGTH]
 
         if cg.contains_banned_content(text):
             text = "Text contained banned content and has been removed"
 
-        sys_prompt = "You are JuanBot. Summarize the following document text clearly and helpfully."
+        sys_prompt = "Summarize the following document text clearly and helpfully. Do not make up information under any circumstance"
 
         return Response(generate(text, [], sys_prompt), content_type='text/event-stream')
     except Exception as e:
         print("Error during /process-docx:", str(e))
         return jsonify({"error": str(e)}), 500
+    
+#Fix for now for file processing bug     
+@docx_bp.route('/process-file', methods=['POST'])
+def process_file():
+    file_key = request.json.get('file_key')
+    print("file_key:", file_key)
+    
+    if not file_key:
+        return jsonify({"error": "File key is required"}), 400
+
+    try:
+        bucket_name = os.getenv("AWS_S3_BUCKET_NAME")
+        print("Using bucket:", bucket_name)
+        text = extract_text_auto(bucket_name, file_key)
+        print("Extracted text length:", len(text))
+
+        # Optional safety truncation
+        MAX_INPUT_LENGTH = 12000 # approx 2000 words
+        text = "Summarize this text: " + text[:MAX_INPUT_LENGTH]
+
+        # if cg.contains_banned_content(text):
+        #     text = "Text contained banned content and has been removed"
+
+        sys_prompt = "Summarize the following document text clearly and helpfully. Do not make up information under any circumstance"
+
+        return jsonify({"summary" : generate_no_stream(text, [], sys_prompt)})
+    except Exception as e:
+        print("Error during /process-docx:", str(e))
+        return jsonify({"error": str(e)}), 500
+    
 
 @docx_bp.route('/generate-upload-url', methods=['POST'])
 def generate_upload_url():
