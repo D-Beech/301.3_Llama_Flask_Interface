@@ -2,8 +2,7 @@ import re
 from better_profanity import profanity
 
 
-# Setup (load better-profanity default list)
-
+# Load default profanity list
 profanity.load_censor_words()
 
 # Helper to build regex pattern
@@ -18,28 +17,34 @@ CUSTOM_SWEAR_WORDS = ["damn", "hell", "shit", "fuck", "bastard", "asshole", "cra
 pokemon_pattern = build_pattern(POKEMON_NAMES)
 swear_pattern = build_pattern(CUSTOM_SWEAR_WORDS)
 
-# Individual Filters
+# Filter functions
 def contains_banned_pokemon(text):
-    """Check for Pokémon names."""
     return bool(pokemon_pattern.search(text))
 
 def contains_custom_swearing(text):
-    """Check for basic swearing from custom list."""
     return bool(swear_pattern.search(text))
 
 def contains_profanity(text):
-    """Use better_profanity library to check for swearing/slurs."""
     return profanity.contains_profanity(text)
 
 def censor_text(text):
-    """Censor swearing using better_profanity."""
     return profanity.censor(text)
 
-# Combined Check  / Gitchy atm
+# Register filters with names
+FILTERS = {
+    "pokemon": contains_banned_pokemon,
+    "custom_swear": contains_custom_swearing,
+    "profanity_lib": contains_profanity,
+}
+
+# Elegant check using filter map
 def contains_banned_content(text):
-    return (
-        contains_banned_pokemon(text) or
-        contains_custom_swearing(text) or
-        contains_profanity(text)
-    )
+    for name, func in FILTERS.items():
+        if func(text):
+            #logging.info(f"Triggered filter: {name}")
+            return True, name #returns bool for if it's bad also name of guard that triggered for logging
+    return False, None
+
+
+
 

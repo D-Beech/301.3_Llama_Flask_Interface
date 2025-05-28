@@ -1,29 +1,20 @@
-import firebase_admin
-from firebase_admin import credentials, auth
+from flask import g, request
 from functools import wraps
-from flask import request, jsonify
-
-# Initialize only once
-cred = credentials.Certificate("serviceAccountKey.json")
-firebase_admin.initialize_app(cred)
-
-def verify_token(id_token):
-    return auth.verify_id_token(id_token)
+from firebase_admin import auth
 
 def require_firebase_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
-            return jsonify({"error": "Unauthorized"}), 401
-
-        id_token = auth_header.split("Bearer ")[1]
-
+        id_token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not id_token:
+            return {"error": "Unauthorized"}, 401
         try:
-            decoded_token = verify_token(id_token)
-            request.user = decoded_token  # Optional: user data
-        except Exception as e:
-            return jsonify({"error": "Invalid token"}), 401
-
+            decoded_token = auth.verify_id_token(id_token)
+            g.user = {
+                "uid": decoded_token["uid"],
+                "is_anonymous": decoded_token.get("firebase", {}).get("sign_in_provider") == "anonymous"
+            }
+        except Exception:
+            return {"error": "Invalid or expired token"}, 401
         return f(*args, **kwargs)
     return decorated_function

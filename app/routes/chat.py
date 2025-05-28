@@ -2,19 +2,24 @@ from flask import Blueprint, request, jsonify, Response
 import requests
 
 # from app.utils.guards import guard
-from app.utils.summarizer import build_system_prompt, generate
+from app.utils.summarizer import build_system_prompt, generate, generate_w_uid
 from app.models import ChatPayload
 
 import app.utils.custom_guards as cg
 
-from app.firebase_auth import require_firebase_auth
+from app.firebase_auth import require_firebase_auth, g
+
+from app.utils.guard_logging import logger
+
 
 chat_bp = Blueprint('chat', __name__)
 
-@chat_bp.route('/stream_chat', methods=['POST'])
+@chat_bp.route("/stream_chat", methods=["POST"])
 @require_firebase_auth
 def stream_chat():
     data = request.get_json()
+    uid = getattr(g, "user", {}).get("uid", "unknown") #for logging users privately
+
     payload = ChatPayload(
         message=data.get("message", ""),
         context=data.get("context", []),
@@ -23,7 +28,7 @@ def stream_chat():
         vocab_complexity=data.get("vocab_complexity", 0),
         token_length=data.get("token_length", 0)
     )
- 
+
     sys_prompt = build_system_prompt(
         vocab_level=payload.vocab_complexity,
         tone_level=payload.tone,
@@ -31,14 +36,20 @@ def stream_chat():
         token_length=payload.token_length
     )
 
-    if cg.contains_banned_content(payload.message):
-        sys_prompt = "User attempted to talk about NSFW content, create error message warning them not to"
+    #Track if banned content was triggered by this UID
+    is_banned, trigger = cg.contains_banned_content(payload.message)
+    if is_banned:
+        #sys_prompt = "User attempted to talk about that content, create error message warning them not to"
+        sys_prompt = f"User attempted to talk about restricted content: {trigger}, create short friendly error message warning them not to"
         payload.message = ""
         payload.context = []
+        logger.info(f"User UID: {uid} Prompt Triggered Guard: {trigger}")
+
+
 
     print(payload.message, 'look here')
 
-    return Response(generate(payload.message, payload.context, sys_prompt), content_type='text/event-stream')
+    return Response(generate_w_uid(payload.message, payload.context, sys_prompt, uid), content_type='text/event-stream')
 
 
 @chat_bp.route('/make_title', methods=['POST'])

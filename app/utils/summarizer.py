@@ -1,5 +1,7 @@
 import requests, json
 import app.utils.custom_guards as cg
+from app.utils.guard_logging import logger
+
 
 def generate_no_stream(message, context, sys_prompt):
     print(message, context, sys_prompt, flush=True)
@@ -55,15 +57,54 @@ def generate(message, context, sys_prompt):
 
                 if content:
                     try:
-                        if cg.contains_banned_content(content):
-                            raise ValueError("Banned Content Identified")
-                        # guard.validate(content)  # Optional validation hook
+                        # if cg.contains_banned_content(content):
+                        #     raise ValueError("Banned Content Identified")
+                        # # guard.validate(content)  # Optional validation hook
                         yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
                     except Exception as e:
                         print("Blocked chunk:", repr(content), flush=True)
                         print("Validation error:", repr(e), flush=True)
                         yield f"data: {json.dumps({'message': {'content': ' [Response blocked due to content policy]'}})}\n\n"
                         break
+
+
+
+def generate_w_uid(message, context, sys_prompt, uid):
+    buffer = ""
+    with requests.post(
+        "http://localhost:11434/api/chat",
+        json={
+            "model": "llama3.2",
+            "messages": [{"role": "system", "content": sys_prompt}] +
+                       context +
+                       [{"role": "user", "content": message}],
+            "stream": True
+        },
+        stream=True
+    ) as r:
+        for line in r.iter_lines():
+            if line:
+                data = json.loads(line)
+                content = data.get("message", {}).get("content", "")
+                buffer += content
+
+                # Only check filter on buffer once it's long enough (e.g., 20 chars)
+                if len(buffer) >= 20 or content.endswith(('.', '!', '?')):
+                    is_banned, trigger = cg.contains_banned_content(buffer)
+                    if is_banned:
+                        logger.info(f"User UID: {uid} Response Generated Triggered Guard: {trigger}")
+                        # Yield a warning message and break the stream
+                        yield f"data: {json.dumps({'message': {'content': f' [Response blocked due to Restricted Content: {trigger}]'}})}\n\n"
+                        return
+                    else:
+                        # Yield the buffered content, then reset buffer
+                        yield f"data: {json.dumps({'message': {'content': buffer}})}\n\n"
+                        buffer = ""
+
+        # If any leftover buffer after the stream ends yield it
+        if buffer:
+            yield f"data: {json.dumps({'message': {'content': buffer}})}\n\n"
+
 
 
 

@@ -2,4 +2,6 @@ venv/
 .env
 
 app.log
+guardrails.log
+Guardrails.log
 serviceAccountKey.json
