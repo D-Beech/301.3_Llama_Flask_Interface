@@ -5,3 +5,8 @@ app.log
 guardrails.log
 Guardrails.log
 serviceAccountKey.json
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
