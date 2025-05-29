@@ -2,13 +2,14 @@ import requests, json
 import app.utils.custom_guards as cg
 from app.utils.guard_logging import logger
 
+llama_url = "54.153.130.139"
 
 def generate_no_stream(message, context, sys_prompt):
     print(message, context, sys_prompt, flush=True)
 
     # Send a regular (non-streaming) POST request
     response = requests.post(
-        "http://localhost:11434/api/chat",
+        f"http://{llama_url}:11434/api/chat",
         json={
             "model": "llama3.2",
             "messages": [{"role": "system", "content": sys_prompt}] +
@@ -40,7 +41,7 @@ def generate_no_stream(message, context, sys_prompt):
 def generate(message, context, sys_prompt):
     print(message, context, sys_prompt,flush=True)
     with requests.post(
-        "http://localhost:11434/api/chat",
+        f"http://{llama_url}:11434/api/chat",
         json={
             "model": "llama3.2",
             "messages": [{"role": "system", "content": sys_prompt}] +
@@ -72,7 +73,7 @@ def generate(message, context, sys_prompt):
 def generate_w_uid(message, context, sys_prompt, uid):
     buffer = ""
     with requests.post(
-        "http://localhost:11434/api/chat",
+        f"http://{llama_url}:11434/api/chat",
         json={
             "model": "llama3.2",
             "messages": [{"role": "system", "content": sys_prompt}] +
