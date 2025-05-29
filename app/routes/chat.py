@@ -56,7 +56,7 @@ def stream_chat():
 @require_firebase_auth
 def make_title():
     context = request.json.get("context", [])
-    prompt = "You are to return a single concise title summarizing the conversation..."
+    prompt = "Generate a single concice title summarising the conversation, no more than 4 words. Do not use quotes in your response. If there is no conversation to summarise, use the title New Chat."
     payload = {
         "model": "llama3.2",
         "messages": context + [{"role": "user", "content": prompt}],
