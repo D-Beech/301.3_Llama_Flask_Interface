@@ -2,7 +2,7 @@ import requests, json
 import app.utils.custom_guards as cg
 from app.utils.guard_logging import logger
 
-llama_url = "54.153.130.139"
+llama_url = "localhost" # 54.153.130.139
 
 def generate_no_stream(message, context, sys_prompt):
     print(message, context, sys_prompt, flush=True)
@@ -30,9 +30,9 @@ def generate_no_stream(message, context, sys_prompt):
     content = data.get("message", {}).get("content", "")
 
     # Check for banned content once on the full generated content
-    if cg.contains_banned_content(content):
-        print("Banned content detected in final response", flush=True)
-        return " [Response redacted due to content policy]"
+    # if cg.contains_banned_content(content):
+    #     print("Banned content detected in final response", flush=True)
+    #     return " [Response redacted due to content policy]"
 
     return content
 
