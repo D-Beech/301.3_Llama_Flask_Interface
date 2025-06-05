@@ -4,11 +4,8 @@ import requests
 # from app.utils.guards import guard
 from app.utils.summarizer import build_system_prompt, generate, generate_w_uid
 from app.models import ChatPayload
-
 import app.utils.custom_guards as cg
-
 from app.firebase_auth import require_firebase_auth, g
-
 from app.utils.guard_logging import logger
 
 
@@ -50,6 +47,8 @@ def stream_chat():
     print(payload.message, 'look here')
 
     return Response(generate_w_uid(payload.message, payload.context, sys_prompt, uid), content_type='text/event-stream')
+
+
 
 
 @chat_bp.route('/make_title', methods=['POST'])

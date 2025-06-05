@@ -30,9 +30,9 @@ def generate_no_stream(message, context, sys_prompt):
     content = data.get("message", {}).get("content", "")
 
     # Check for banned content once on the full generated content
-    if cg.contains_banned_content(content):
-        print("Banned content detected in final response", flush=True)
-        return " [Response redacted due to content policy]"
+    # if cg.contains_banned_content(content):
+    #     print("Banned content detected in final response", flush=True)
+    #     return " [Response redacted due to content policy]"
 
     return content
 
@@ -87,32 +87,34 @@ def generate_w_uid(message, context, sys_prompt, uid):
             if line:
                 data = json.loads(line)
                 content = data.get("message", {}).get("content", "")
-                buffer += content
+                # buffer += content
 
-                # Only check filter on buffer once it's long enough (e.g., 20 chars)
-                if len(buffer) >= 20 or content.endswith(('.', '!', '?')):
-                    is_banned, trigger = cg.contains_banned_content(buffer)
-                    if is_banned:
-                        logger.info(f"User UID: {uid} Response Generated Triggered Guard: {trigger}")
-                        # Yield a warning message and break the stream
-                        yield f"data: {json.dumps({'message': {'content': f' [Response blocked due to Restricted Content: {trigger}]'}})}\n\n"
-                        return
-                    else:
-                        # Yield the buffered content, then reset buffer
-                        yield f"data: {json.dumps({'message': {'content': buffer}})}\n\n"
-                        buffer = ""
+                yield f"data: {json.dumps({'message': {'content': content}})}\n\n"
 
-        # If any leftover buffer after the stream ends yield it
-        if buffer:
-            yield f"data: {json.dumps({'message': {'content': buffer}})}\n\n"
+        #         # Only check filter on buffer once it's long enough (e.g., 20 chars)
+        #         if len(buffer) >= 20 or content.endswith(('.', '!', '?')):
+        #             is_banned, trigger = cg.contains_banned_content(buffer)
+        #             if is_banned:
+        #                 logger.info(f"User UID: {uid} Response Generated Triggered Guard: {trigger}")
+        #                 # Yield a warning message and break the stream
+        #                 yield f"data: {json.dumps({'message': {'content': f' [Response blocked due to Restricted Content: {trigger}]'}})}\n\n"
+        #                 return
+        #             else:
+        #                 # Yield the buffered content, then reset buffer
+                        
+        #                 buffer = ""
+
+        # # If any leftover buffer after the stream ends yield it
+        # if buffer:
+        #     yield f"data: {json.dumps({'message': {'content': buffer}})}\n\n"
 
 
 def build_system_prompt(token_length=0, vocab_level=0, tone_level=0, display_name='unknown'):
-    token_lengths = ['consise', 'medium', 'long']
+    token_lengths = ['very consise', 'medium', 'long and well thought out']
     vocab_levels = ['child', 'teen', 'uni']
     tones = ['friendly', 'aggressive', 'formal']
     return (
         f"You are EduBot. Use a {tones[tone_level]} tone and {vocab_levels[vocab_level]} vocabulary. "
-        f"Keep responses {token_lengths[token_length]}. The user's name is: {display_name}."
+        f"Keep responses {token_lengths[token_length]} in length. The user's name is: {display_name}. Use it to be friendly."
         f"Do not make up information under any circumstance. If you are unsure you can reply I am not sure."
     )
