@@ -6,6 +6,11 @@ from .routes.docx import docx_bp
 import firebase_admin
 from firebase_admin import credentials
 
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 
 def create_app():
     app = Flask(__name__)

@@ -2,6 +2,7 @@ from flask import g, request
 from functools import wraps
 from firebase_admin import auth
 
+#Defining wrapper so that only users logged in through firebase can access APIs
 def require_firebase_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):

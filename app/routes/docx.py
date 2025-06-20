@@ -7,35 +7,9 @@ import app.utils.custom_guards as cg
 
 docx_bp = Blueprint('docx', __name__)
 
-@docx_bp.route('/process-docx', methods=['POST'])
-def process_docx():
-    file_key = request.json.get('file_key')
-    print("file_key:", file_key)
-    
-    if not file_key:
-        return jsonify({"error": "File key is required"}), 400
-
-    try:
-        bucket_name = os.getenv("AWS_S3_BUCKET_NAME")
-        print("Using bucket:", bucket_name)
-        text = extract_text_auto(bucket_name, file_key)
-        print("Extracted text length:", len(text))
-
-        # Optional safety truncation
-        MAX_INPUT_LENGTH = 12000 # approx 2000 words
-        text = "Summarize this text: " + text[:MAX_INPUT_LENGTH]
-
-        if cg.contains_banned_content(text):
-            text = "Text contained banned content and has been removed"
-
-        sys_prompt = "Summarize the following document text clearly and helpfully. Do not make up information under any circumstance"
-
-        return Response(generate(text, [], sys_prompt), content_type='text/event-stream')
-    except Exception as e:
-        print("Error during /process-docx:", str(e))
-        return jsonify({"error": str(e)}), 500
-    
-#Fix for now for file processing bug     
+   
+#Reads file from S3 using file_key
+#Summarises document and returns, summary + original text    
 @docx_bp.route('/process-file', methods=['POST'])
 def process_file():
     file_key = request.json.get('file_key')
@@ -50,21 +24,26 @@ def process_file():
         text = extract_text_auto(bucket_name, file_key)
         print("Extracted text length:", len(text))
 
-        # Optional safety truncation
+        # Optional safety truncation, SRS document specified 2 page limit for file upload/summary. 
+        # Documents which are too long will trigger
         MAX_INPUT_LENGTH = 12000 # approx 2000 words
         text = "Summarize this text: " + text[:MAX_INPUT_LENGTH]
 
-        # if cg.contains_banned_content(text):
-        #     text = "Text contained banned content and has been removed"
+        if cg.contains_banned_content(text):
+            text = "Text contained banned content and has been removed"
 
         sys_prompt = "Summarize the following document text clearly and helpfully. Do not make up information under any circumstance"
+
+        #testing
+        return jsonify({"og_text" : text})
 
         return jsonify({"summary" : generate_no_stream(text, [], sys_prompt), "og_text" : text})
     except Exception as e:
         print("Error during /process-docx:", str(e))
         return jsonify({"error": str(e)}), 500
     
-
+#Generates pre-signed url for document upload from client app
+#This method was chosen to minimize load on server
 @docx_bp.route('/generate-upload-url', methods=['POST'])
 def generate_upload_url():
     data = request.get_json()

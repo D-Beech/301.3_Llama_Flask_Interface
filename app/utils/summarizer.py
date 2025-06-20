@@ -2,7 +2,8 @@ import requests, json
 import app.utils.custom_guards as cg
 from app.utils.guard_logging import logger
 
-llama_url = "54.153.130.139"
+# llama_url = "16.176.107.102"
+llama_url = "localhost"
 
 def generate_no_stream(message, context, sys_prompt):
     print(message, context, sys_prompt, flush=True)

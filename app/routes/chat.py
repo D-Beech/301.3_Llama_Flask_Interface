@@ -11,15 +11,17 @@ from app.utils.guard_logging import logger
 
 chat_bp = Blueprint('chat', __name__)
 
+#This function accepts message from client app and returns SSE, stream response
 @chat_bp.route("/stream_chat", methods=["POST"])
 @require_firebase_auth
 def stream_chat():
     data = request.get_json()
     uid = getattr(g, "user", {}).get("uid", "unknown") #for logging users privately
 
+
     payload = ChatPayload(
         message=data.get("message", ""),
-        context=data.get("context", []),
+        context=data.get("context", []), #If no context, passes in empty array
         displayName=data.get("displayName", "unknown"),
         tone=data.get("tone", 0),
         vocab_complexity=data.get("vocab_complexity", 0),
@@ -36,21 +38,18 @@ def stream_chat():
     #Track if banned content was triggered by this UID
     is_banned, trigger = cg.contains_banned_content(payload.message)
     if is_banned:
-        #sys_prompt = "User attempted to talk about that content, create error message warning them not to"
+        sys_prompt = "User attempted to talk about that content, create error message warning them not to"
         sys_prompt = f"User attempted to talk about restricted content: {trigger}, create short friendly error message warning them not to"
         payload.message = ""
         payload.context = []
         logger.info(f"User UID: {uid} Prompt Triggered Guard: {trigger}")
 
-
-
     print(payload.message, 'look here')
-
     return Response(generate_w_uid(payload.message, payload.context, sys_prompt, uid), content_type='text/event-stream')
 
 
 
-
+#This function generates a title based on context
 @chat_bp.route('/make_title', methods=['POST'])
 @require_firebase_auth
 def make_title():
@@ -65,6 +64,8 @@ def make_title():
     content = response.json().get("message", {}).get("content", "No response.")
     return jsonify({"title": content})
 
+
+#Test route for checking firebase auth is working correctly
 @chat_bp.route('/protected')
 @require_firebase_auth
 def protected():
@@ -72,3 +73,5 @@ def protected():
         "message": f"Hello, {request.user['uid']}!",
         "user_info": request.user
     })
+
+
